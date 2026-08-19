@@ -17,7 +17,7 @@ function progressoConcluido(progresso?: Progresso | null) {
 export async function questionarioConcluido(usuarioId: string) {
   if (getSupabaseConnectionStatus().isConfigured) {
     const progresso = await supabaseSelect<Progresso[]>('questionario_progresso', {
-      select: 'concluido',
+      select: 'concluido,respostas_json',
       usuario_id: `eq.${usuarioId}`,
       limit: 1,
     });
@@ -26,7 +26,10 @@ export async function questionarioConcluido(usuarioId: string) {
 
   if (isDatabaseConfigured && db) {
     const [progresso] = await db
-      .select({ concluido: questionario_progresso.concluido })
+      .select({
+        concluido: questionario_progresso.concluido,
+        respostas_json: questionario_progresso.respostas_json,
+      })
       .from(questionario_progresso)
       .where(eq(questionario_progresso.usuario_id, usuarioId))
       .limit(1);
