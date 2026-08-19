@@ -1,0 +1,20 @@
+{
+  "horario_acordar": "07:00",
+  "horario_dormir": "23:00",
+  "dias_disponiveis": [1,2,3,4,5],
+  "materias": [
+    { "nome": "A", "peso_prioridade": 25, "cor": "#ff0000" },
+    { "nome": "B", "peso_prioridade": 20, "cor": "#00ff00" },
+    { "nome": "C", "peso_prioridade": 15, "cor": "#0000ff" },
+    { "nome": "D", "peso_prioridade": 10, "cor": "#ffff00" },
+    { "nome": "E", "peso_prioridade": 8, "cor": "#ff00ff" },
+    { "nome": "F", "peso_prioridade": 7, "cor": "#00ffff" },
+    { "nome": "G", "peso_prioridade": 5, "cor": "#880000" },
+    { "nome": "H", "peso_prioridade": 5, "cor": "#008800" }
+  ],
+  "atividades_fixas": [],
+  "tempo_max_sem_pausa": 50,
+  "periodo_preferido": "manha",
+  "varias_materias_por_dia": false,
+  "criar_dia_revisao": false
+}
