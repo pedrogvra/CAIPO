@@ -54,7 +54,7 @@ export default function CronogramaPage() {
   useEffect(() => {
     if (!usuario) return;
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setBloqueado(Boolean(d.progresso?.respostas_json?.salvo_para_depois));
+      setBloqueado(Boolean(d.progresso && !d.progresso.concluido && d.progresso.respostas_json?.salvo_para_depois === true));
     });
   }, [usuario]);
 
@@ -74,7 +74,7 @@ export default function CronogramaPage() {
       <div style={{ width: '100%', maxWidth: 440, padding: 28, borderRadius: 20, background: 'linear-gradient(156deg, #2864B8 0%, #173B78 100%)', color: 'white', textAlign: 'center', boxShadow: '6px 6px 10.6px rgba(0,0,0,0.25)' }}>
         <h1 style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, marginBottom: 16 }}>Questionário necessário</h1>
         <p style={{ fontWeight: 600, lineHeight: '24px', marginBottom: 24 }}>Responda ao questionário para criar seu cronograma.</p>
-        <button onClick={() => router.push('/questionario')} style={{ padding: '14px 28px', border: 0, borderRadius: 10, background: '#FFDE68', color: '#091541', fontWeight: 600, cursor: 'pointer' }}>Ir para Questionário</button>
+        <button onClick={() => router.push('/questionario')} style={{ padding: '14px 28px', border: 0, borderRadius: 10, background: '#FFDE68', color: '#091541', fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins' }}>Voltar ao questionário</button>
       </div>
     </div>
   );

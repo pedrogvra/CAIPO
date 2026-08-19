@@ -107,7 +107,7 @@ export default function DashboardPage() {
       if (d.config) setPomConfig(d.config);
     });
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setQuestionarioPendente(Boolean(d.progresso && !d.progresso.concluido && d.progresso.respostas_json?.salvo_para_depois));
+      setQuestionarioPendente(Boolean(d.progresso && !d.progresso.concluido && d.progresso.respostas_json?.salvo_para_depois === true));
     });
   }, [usuario]);
 
@@ -287,8 +287,9 @@ export default function DashboardPage() {
         }}>
           <div>
             {questionarioPendente && (
-              <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 16, background: '#091541', color: '#FFDE68', fontWeight: 600 }}>
-                Você tem um questionário salvo para continuar. <button onClick={() => router.push('/questionario')} style={{ marginLeft: 8, color: '#FFFFFF', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>Retomar</button>
+              <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 16, background: '#091541', color: '#FFDE68', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <span>Você tem um questionário salvo para continuar.</span>
+                <button onClick={() => router.push('/questionario')} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#FFDE68', color: '#091541', fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins' }}>Voltar ao questionário</button>
               </div>
             )}
             <div style={{ color: '#091541', fontSize: 24, fontWeight: 600 }}>Pomodoro</div>
@@ -302,7 +303,8 @@ export default function DashboardPage() {
             </div>
           </div>
           <button
-            onClick={() => router.push('/pomodoro')}
+            onClick={() => router.push(questionarioPendente ? '/questionario' : '/pomodoro')}
+            aria-label={questionarioPendente ? 'Voltar ao questionário' : 'Abrir Pomodoro'}
             style={{
               width: 100,
               height: 100,

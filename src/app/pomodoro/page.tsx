@@ -124,7 +124,7 @@ export default function PomodoroPage() {
   useEffect(() => {
     if (!usuario) return;
     fetch('/api/questionario/progresso').then((r) => r.json()).then((d) => {
-      setBloqueado(Boolean(d.progresso?.respostas_json?.salvo_para_depois));
+      setBloqueado(Boolean(d.progresso && !d.progresso.concluido && d.progresso.respostas_json?.salvo_para_depois === true));
     });
   }, [usuario]);
 
