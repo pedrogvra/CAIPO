@@ -107,7 +107,8 @@ export default function DashboardPage() {
       if (d.config) setPomConfig(d.config);
     });
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setQuestionarioPendente(d.progresso?.concluido !== true);
+      const respostasDiagnostico = d.progresso?.respostas_json?.diagnostico_inicial?.respostas || {};
+      setQuestionarioPendente(!(d.progresso?.concluido === true || d.progresso?.concluido === 'true' || Object.keys(respostasDiagnostico).length >= 10));
     });
   }, [usuario]);
 

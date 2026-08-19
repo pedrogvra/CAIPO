@@ -3,7 +3,16 @@ import { questionario_progresso } from '@/db/schema';
 import { getSupabaseConnectionStatus, supabaseSelect } from '@/lib/supabase-data';
 import { eq } from 'drizzle-orm';
 
-type Progresso = { concluido?: boolean | null };
+type Progresso = {
+  concluido?: boolean | string | null;
+  respostas_json?: { diagnostico_inicial?: { respostas?: Record<string, unknown> } } | null;
+};
+
+function progressoConcluido(progresso?: Progresso | null) {
+  return progresso?.concluido === true
+    || progresso?.concluido === 'true'
+    || Object.keys(progresso?.respostas_json?.diagnostico_inicial?.respostas || {}).length >= 10;
+}
 
 export async function questionarioConcluido(usuarioId: string) {
   if (getSupabaseConnectionStatus().isConfigured) {
@@ -12,7 +21,7 @@ export async function questionarioConcluido(usuarioId: string) {
       usuario_id: `eq.${usuarioId}`,
       limit: 1,
     });
-    return progresso?.[0]?.concluido === true;
+    return progressoConcluido(progresso?.[0]);
   }
 
   if (isDatabaseConfigured && db) {
@@ -21,7 +30,7 @@ export async function questionarioConcluido(usuarioId: string) {
       .from(questionario_progresso)
       .where(eq(questionario_progresso.usuario_id, usuarioId))
       .limit(1);
-    return progresso?.concluido === true;
+    return progressoConcluido(progresso);
   }
 
   return false;

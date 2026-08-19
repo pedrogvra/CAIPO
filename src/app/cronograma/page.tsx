@@ -54,7 +54,8 @@ export default function CronogramaPage() {
   useEffect(() => {
     if (!usuario) return;
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setBloqueado(d.progresso?.concluido !== true);
+      const respostasDiagnostico = d.progresso?.respostas_json?.diagnostico_inicial?.respostas || {};
+      setBloqueado(!(d.progresso?.concluido === true || d.progresso?.concluido === 'true' || Object.keys(respostasDiagnostico).length >= 10));
     });
   }, [usuario]);
 
