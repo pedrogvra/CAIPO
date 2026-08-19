@@ -4,6 +4,7 @@ import { cronogramas, cronograma_sessoes, materias, pomodoro_sessoes } from '@/d
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
 import { getSupabaseConnectionStatus, supabaseDelete, supabaseInsert, supabaseSelect, supabaseUpdate } from '@/lib/supabase-data';
 import { eq, desc } from 'drizzle-orm';
+import { questionarioConcluido } from '@/lib/questionario-access';
 
 async function deleteUserCronogramasSupabase(userId: string, keepId: string) {
   const existing = await supabaseSelect<Array<{ id: string }>>('cronogramas', {
@@ -96,6 +97,9 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!(await questionarioConcluido(payload.userId))) {
+      return NextResponse.json({ error: 'Conclua o questionário antes de criar um cronograma.' }, { status: 403 });
+    }
 
     const body = await req.json();
     const { nome, horario_acordar, horario_dormir, dias_disponiveis, periodo_preferido,

@@ -5,6 +5,7 @@ import { verifyToken, getTokenFromCookie } from '@/lib/auth';
 import { getSupabaseConnectionStatus, supabaseInsert, supabaseSelect, supabaseUpdate } from '@/lib/supabase-data';
 import { eq, and, desc } from 'drizzle-orm';
 import { getToday } from '@/lib/utils';
+import { questionarioConcluido } from '@/lib/questionario-access';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +13,9 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!(await questionarioConcluido(payload.userId))) {
+      return NextResponse.json({ error: 'Conclua o questionário antes de usar o Pomodoro.' }, { status: 403 });
+    }
 
     const body = await req.json();
     const timeZone = typeof body.time_zone === 'string' && body.time_zone.length > 0 ? body.time_zone : undefined;

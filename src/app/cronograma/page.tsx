@@ -54,7 +54,7 @@ export default function CronogramaPage() {
   useEffect(() => {
     if (!usuario) return;
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setBloqueado(Boolean(d.progresso && !d.progresso.concluido && d.progresso.respostas_json?.salvo_para_depois === true));
+      setBloqueado(d.progresso?.concluido !== true);
     });
   }, [usuario]);
 
@@ -66,16 +66,6 @@ export default function CronogramaPage() {
   if (loading || !usuario) return (
     <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
-    </div>
-  );
-
-  if (bloqueado) return (
-    <div className="flex flex-1 items-center justify-center p-6">
-      <div style={{ width: '100%', maxWidth: 440, padding: 28, borderRadius: 20, background: 'linear-gradient(156deg, #2864B8 0%, #173B78 100%)', color: 'white', textAlign: 'center', boxShadow: '6px 6px 10.6px rgba(0,0,0,0.25)' }}>
-        <h1 style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, marginBottom: 16 }}>Questionário necessário</h1>
-        <p style={{ fontWeight: 600, lineHeight: '24px', marginBottom: 24 }}>Responda ao questionário para criar seu cronograma.</p>
-        <button onClick={() => router.push('/questionario')} style={{ padding: '14px 28px', border: 0, borderRadius: 10, background: '#FFDE68', color: '#091541', fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins' }}>Voltar ao questionário</button>
-      </div>
     </div>
   );
 
@@ -201,7 +191,17 @@ export default function CronogramaPage() {
           </button>
         </div>
 
-        {mostrandoOrientacao && (
+        {bloqueado && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <div style={{ width: '100%', maxWidth: 440, padding: 28, borderRadius: 20, background: 'linear-gradient(156deg, #2864B8 0%, #173B78 100%)', color: 'white', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,0.45)' }}>
+              <h1 style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, marginBottom: 16 }}>Questionário necessário</h1>
+              <p style={{ fontWeight: 600, lineHeight: '24px', marginBottom: 24 }}>Responda ao questionário para criar seu cronograma.</p>
+              <button onClick={() => router.push('/questionario')} style={{ padding: '14px 28px', border: 0, borderRadius: 10, background: '#FFDE68', color: '#091541', fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins' }}>Voltar ao questionário</button>
+            </div>
+          </div>
+        )}
+
+        {mostrandoOrientacao && !bloqueado && (
           <div
             role="dialog"
             aria-modal="true"

@@ -107,7 +107,7 @@ export default function DashboardPage() {
       if (d.config) setPomConfig(d.config);
     });
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setQuestionarioPendente(Boolean(d.progresso && !d.progresso.concluido && d.progresso.respostas_json?.salvo_para_depois === true));
+      setQuestionarioPendente(d.progresso?.concluido !== true);
     });
   }, [usuario]);
 
@@ -303,8 +303,8 @@ export default function DashboardPage() {
             </div>
           </div>
           <button
-            onClick={() => router.push(questionarioPendente ? '/questionario' : '/pomodoro')}
-            aria-label={questionarioPendente ? 'Voltar ao questionário' : 'Abrir Pomodoro'}
+            onClick={() => router.push('/pomodoro')}
+            aria-label="Abrir Pomodoro"
             style={{
               width: 100,
               height: 100,
