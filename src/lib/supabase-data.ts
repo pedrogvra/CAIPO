@@ -28,7 +28,7 @@ function buildQueryString(params: SupabaseQueryParams = {}) {
   return searchParams.toString();
 }
 
-function getHeaders({ preferReturnRepresentation = false, contentType = true, upsert = false } = {}) {
+function getHeaders({ preferReturnRepresentation = false, contentType = true } = {}) {
   const { key } = getSupabaseConfig();
 
   const headers: Record<string, string> = {
@@ -41,16 +41,8 @@ function getHeaders({ preferReturnRepresentation = false, contentType = true, up
     headers['Content-Type'] = 'application/json';
   }
 
-  const preferParts: string[] = [];
   if (preferReturnRepresentation) {
-    preferParts.push('return=representation');
-  }
-  if (upsert) {
-    preferParts.push('resolution=merge-duplicates');
-  }
-
-  if (preferParts.length > 0) {
-    headers['Prefer'] = preferParts.join(',');
+    headers['Prefer'] = 'return=representation';
   }
 
   return headers;
@@ -63,8 +55,7 @@ async function request<T>(table: string, init: RequestInit, params: SupabaseQuer
     throw new Error('Supabase não está configurado.');
   }
 
-  const { on_conflict, ...cleanParams } = params;
-  const queryString = buildQueryString(cleanParams);
+  const queryString = buildQueryString(params);
   const endpoint = `${url.replace(/\/$/, '')}/rest/v1/${table}${queryString ? `?${queryString}` : ''}`;
 
   const response = await fetch(endpoint, {
@@ -73,7 +64,6 @@ async function request<T>(table: string, init: RequestInit, params: SupabaseQuer
       ...getHeaders({
         preferReturnRepresentation: init.method === 'POST' || init.method === 'PATCH' || init.method === 'PUT',
         contentType: init.method !== 'GET' && init.method !== 'DELETE',
-        upsert: Boolean(on_conflict),
       }),
       ...(init.headers || {}),
     },

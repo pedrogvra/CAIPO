@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
-import { getSupabaseConnectionStatus, supabaseSelect, supabaseInsert, supabaseDelete } from '@/lib/supabase-data';
+import { getSupabaseConnectionStatus, supabaseSelect, supabaseInsert, supabaseUpdate, supabaseDelete } from '@/lib/supabase-data';
 
 type ProgressoFallback = {
   usuario_id: string;
@@ -86,17 +86,32 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      await supabaseInsert('questionario_progresso', {
-        usuario_id: payload.userId,
+      // Check if user progress exists
+      const existing = await supabaseSelect<Array<any>>('questionario_progresso', {
+        select: 'id',
+        usuario_id: `eq.${payload.userId}`,
+      });
+
+      const progressData = {
         ultima_pergunta_id: body.ultima_pergunta_id,
         pontuacao_atual: body.pontuacao_atual || 0,
         concluido: body.concluido || false,
         respostas_json: body.respostas_json || {},
         updated_at: new Date().toISOString(),
-      }, {
-        on_conflict: 'usuario_id',
-        select: '*',
-      });
+      };
+
+      if (existing && existing.length > 0) {
+        // Update existing record
+        await supabaseUpdate('questionario_progresso', progressData, {
+          usuario_id: `eq.${payload.userId}`,
+        });
+      } else {
+        // Insert new record
+        await supabaseInsert('questionario_progresso', {
+          usuario_id: payload.userId,
+          ...progressData,
+        });
+      }
 
       return NextResponse.json({ success: true });
     } catch (err) {
