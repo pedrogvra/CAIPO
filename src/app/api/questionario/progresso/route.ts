@@ -22,12 +22,16 @@ function getStoredProgress(userId: string): ProgressoFallback | null {
 }
 
 function saveStoredProgress(userId: string, data: Partial<ProgressoFallback>): ProgressoFallback {
+  const current = questionarioProgressStore.get(userId);
+  const currentConcluido = current?.concluido === true;
+  const newConcluido = data.concluido === true;
+  
   const nextValue: ProgressoFallback = {
     usuario_id: userId,
-    ultima_pergunta_id: data.ultima_pergunta_id ?? null,
-    pontuacao_atual: data.pontuacao_atual ?? 0,
-    concluido: data.concluido ?? false,
-    respostas_json: data.respostas_json ?? {},
+    ultima_pergunta_id: data.ultima_pergunta_id ?? current?.ultima_pergunta_id ?? null,
+    pontuacao_atual: data.pontuacao_atual ?? current?.pontuacao_atual ?? 0,
+    concluido: currentConcluido || newConcluido,
+    respostas_json: data.respostas_json ?? current?.respostas_json ?? {},
     updated_at: data.updated_at ?? new Date().toISOString(),
   };
 
@@ -88,21 +92,26 @@ export async function POST(req: NextRequest) {
     try {
       // Check if user progress exists
       const existing = await supabaseSelect<Array<any>>('questionario_progresso', {
-        select: 'id',
+        select: '*',
         usuario_id: `eq.${payload.userId}`,
       });
 
       const progressData = {
         ultima_pergunta_id: body.ultima_pergunta_id,
         pontuacao_atual: body.pontuacao_atual || 0,
-        concluido: body.concluido || false,
         respostas_json: body.respostas_json || {},
         updated_at: new Date().toISOString(),
       };
 
       if (existing && existing.length > 0) {
-        // Update existing record
-        await supabaseUpdate('questionario_progresso', progressData, {
+        // Update existing record, but preserve concluido if already true
+        const currentConcluido = existing[0].concluido === true || existing[0].concluido === 'true';
+        const newConcluido = body.concluido === true || body.concluido === 'true';
+        
+        await supabaseUpdate('questionario_progresso', {
+          ...progressData,
+          concluido: currentConcluido || newConcluido,
+        }, {
           usuario_id: `eq.${payload.userId}`,
         });
       } else {
@@ -110,6 +119,7 @@ export async function POST(req: NextRequest) {
         await supabaseInsert('questionario_progresso', {
           usuario_id: payload.userId,
           ...progressData,
+          concluido: body.concluido || false,
         });
       }
 
