@@ -124,8 +124,7 @@ export default function PomodoroPage() {
   useEffect(() => {
     if (!usuario) return;
     fetch('/api/questionario/progresso').then((r) => r.json()).then((d) => {
-      const respostasDiagnostico = d.progresso?.respostas_json?.diagnostico_inicial?.respostas || {};
-      setBloqueado(!(d.progresso?.concluido === true || d.progresso?.concluido === 'true' || Object.keys(respostasDiagnostico).length >= 10));
+      setBloqueado(Boolean(d.progresso?.respostas_json?.salvo_para_depois));
     });
   }, [usuario]);
 
@@ -134,8 +133,7 @@ export default function PomodoroPage() {
     fetch('/api/cronograma').then((r) => r.json()).then((d) => {
       if (d.cronograma) {
         const sessoes = Array.isArray(d.cronograma?.sessoes)
-          ? (d.cronograma.sessoes as Array<{ materia?: string | null; tipo?: string | null }>)
-            .filter((sessao) => sessao.tipo !== 'pausa' && !sessao.tipo?.startsWith('pausa:'))
+          ? (d.cronograma.sessoes as Array<{ materia?: string | null }>)
           : [];
         const nomesMaterias = sessoes
           .map((s) => s.materia)
@@ -303,6 +301,17 @@ export default function PomodoroPage() {
     return (
       <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
+      </div>
+    );
+
+  if (bloqueado)
+    return (
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div style={{ width: '100%', maxWidth: 440, padding: 28, borderRadius: 20, background: 'linear-gradient(156deg, #2864B8 0%, #173B78 100%)', color: 'white', textAlign: 'center', boxShadow: SOMBRA_CARD }}>
+          <h1 style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, marginBottom: 16 }}>Questionário necessário</h1>
+          <p style={{ fontWeight: 600, lineHeight: '24px', marginBottom: 24 }}>Responda ao questionário para usar o Pomodoro.</p>
+          <button onClick={() => router.push('/questionario')} style={{ padding: '14px 28px', border: 0, borderRadius: 10, background: '#FFDE68', color: '#091541', fontWeight: 600, cursor: 'pointer' }}>Ir para Questionário</button>
+        </div>
       </div>
     );
 
@@ -1136,15 +1145,6 @@ export default function PomodoroPage() {
             </div>
           </div>
         </div>
-        )}
-        {bloqueado && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-            <div style={{ width: '100%', maxWidth: 440, padding: 28, borderRadius: 20, background: 'linear-gradient(156deg, #2864B8 0%, #173B78 100%)', color: 'white', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,0.45)' }}>
-              <h1 style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, marginBottom: 16 }}>Questionário necessário</h1>
-              <p style={{ fontWeight: 600, lineHeight: '24px', marginBottom: 24 }}>Responda ao questionário para usar o Pomodoro.</p>
-              <button onClick={() => router.push('/questionario')} style={{ padding: '14px 28px', border: 0, borderRadius: 10, background: '#FFDE68', color: '#091541', fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins' }}>Voltar ao questionário</button>
-            </div>
-          </div>
         )}
       </div>
     </>

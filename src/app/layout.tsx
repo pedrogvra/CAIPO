@@ -7,11 +7,7 @@ export const metadata: Metadata = {
   title: 'CAIPO – Plataforma Inteligente de Estudos',
   description: 'Organize seus estudos com o CAIPO, seu assistente inteligente de aprendizado.',
   icons: {
-    icon: [
-      { url: '/favicon-32x32.png?v=2', type: 'image/png', sizes: '32x32' },
-      { url: '/favicon.ico?v=2', type: 'image/x-icon' },
-    ],
-    apple: '/apple-touch-icon.png?v=2',
+    icon: '/favicon.ico',
   },
 };
 

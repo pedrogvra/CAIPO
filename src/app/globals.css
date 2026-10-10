@@ -236,22 +236,3 @@ input, button, select, textarea {
   height: auto;
   display: block;
 }
-
-@keyframes page-enter {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.app-main > * {
-  animation: page-enter 140ms ease-out both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-main > * {
-    animation: none;
-  }
-}

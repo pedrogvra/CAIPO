@@ -269,8 +269,7 @@ export default function QuestionarioPage() {
         delete nextState.salvo_para_depois;
       }
       const nextConversation = await fetchConversation(nextState);
-      const diagnosticoCompleto = Object.keys(nextState.diagnostico_inicial?.respostas || {}).length >= 10;
-      const concluded = nextConversation.etapa === 'finalizado' || nextConversation.etapa === 'feedback_pendente' || diagnosticoCompleto;
+      const concluded = nextConversation.etapa === 'finalizado';
 
       await saveProgress(nextConversation.etapa, nextState, concluded);
       setEstadoAtual(nextState);

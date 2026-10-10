@@ -80,18 +80,12 @@ CREATE TABLE IF NOT EXISTS cronograma_sessoes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cronograma_id UUID NOT NULL REFERENCES cronogramas(id) ON DELETE CASCADE,
   materia TEXT NOT NULL,
-  categoria TEXT,
   dia_semana INTEGER NOT NULL,
   horario_inicio TEXT NOT NULL,
   horario_fim TEXT NOT NULL,
   tipo TEXT DEFAULT 'estudo',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
-CREATE INDEX IF NOT EXISTS cronogramas_usuario_id_idx ON cronogramas(usuario_id);
-CREATE INDEX IF NOT EXISTS cronograma_sessoes_cronograma_id_idx ON cronograma_sessoes(cronograma_id);
-
-ALTER TABLE cronograma_sessoes ADD COLUMN IF NOT EXISTS categoria TEXT;
 
 CREATE TABLE IF NOT EXISTS atividades_fixas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -112,8 +106,6 @@ CREATE TABLE IF NOT EXISTS materias (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS materias_usuario_id_idx ON materias(usuario_id);
-
 CREATE TABLE IF NOT EXISTS pomodoro_sessoes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -125,8 +117,6 @@ CREATE TABLE IF NOT EXISTS pomodoro_sessoes (
   motivo_pausa TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
-CREATE INDEX IF NOT EXISTS pomodoro_sessoes_usuario_id_idx ON pomodoro_sessoes(usuario_id);
 
 CREATE TABLE IF NOT EXISTS pomodoro_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -159,8 +149,6 @@ CREATE TABLE IF NOT EXISTS historico_diario (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS historico_diario_usuario_data_idx ON historico_diario(usuario_id, data);
-
 CREATE TABLE IF NOT EXISTS configuracoes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id UUID NOT NULL UNIQUE REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -190,62 +178,20 @@ CREATE TABLE IF NOT EXISTS conversas_caipo (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS frequencia_perguntas (
-  id INTEGER PRIMARY KEY,
-  categoria TEXT NOT NULL,
-  pilar_id INTEGER NOT NULL,
-  pergunta TEXT NOT NULL,
-  opcoes JSONB NOT NULL,
-  respostas_caipo JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS frequencia_historico (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  pergunta_id INTEGER NOT NULL REFERENCES frequencia_perguntas(id),
-  data DATE NOT NULL,
-  opcao_indice INTEGER NOT NULL,
-  resposta_usuario TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS frequencia_historico_usuario_data_idx
-  ON frequencia_historico(usuario_id, data);
-
-CREATE UNIQUE INDEX IF NOT EXISTS frequencia_historico_unique_answer_idx
-  ON frequencia_historico(usuario_id, pergunta_id, data);
-
-CREATE TABLE IF NOT EXISTS frequencia_perguntas_usadas (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-  pergunta_id INTEGER NOT NULL REFERENCES frequencia_perguntas(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (usuario_id, pergunta_id)
-);
-
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'usuarios' AND policyname = 'usuarios_select_public') THEN
-    CREATE POLICY "usuarios_select_public" ON usuarios
-      FOR SELECT TO anon, authenticated
-      USING (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'usuarios' AND policyname = 'usuarios_insert_public') THEN
-    CREATE POLICY "usuarios_insert_public" ON usuarios
-      FOR INSERT TO anon, authenticated
-      WITH CHECK (true);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'usuarios' AND policyname = 'usuarios_update_owner') THEN
-    CREATE POLICY "usuarios_update_owner" ON usuarios
-      FOR UPDATE TO authenticated
-      USING (auth.uid() = id)
-      WITH CHECK (auth.uid() = id);
-  END IF;
-END
-$$;
+CREATE POLICY IF NOT EXISTS "usuarios_select_public" ON usuarios
+  FOR SELECT TO anon, authenticated
+  USING (true);
+
+CREATE POLICY IF NOT EXISTS "usuarios_insert_public" ON usuarios
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
+
+CREATE POLICY IF NOT EXISTS "usuarios_update_owner" ON usuarios
+  FOR UPDATE TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 INSERT INTO preferencias_sistema (chave, valor, tipo, descricao, ativo)
 VALUES

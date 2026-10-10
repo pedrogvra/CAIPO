@@ -19,64 +19,6 @@ interface PomodoroConfigData { tempo_foco: number; }
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-const MENSAGENS_FREQUENCIA = {
-  desativada: {
-    manha: [
-      'Você ainda não estudou hoje. Ainda dá tempo!',
-      'Bom dia! Vamos começar o estudo de hoje?',
-      'Um pequeno começo pode mudar o seu dia. Vamos estudar?',
-      'Seu cronograma está esperando por você. Bora começar?',
-      'Que tal reservar alguns minutos para o seu futuro hoje?',
-    ],
-    tarde: [
-      'A tarde ainda está começando. Que tal fazer um Pomodoro?',
-      'Ainda dá tempo de estudar hoje. Vamos nessa?',
-      'Pausa no que está fazendo e venha conquistar um pouco de foco.',
-      'Você pode começar com uma matéria. O importante é começar.',
-      'Seu próximo avanço pode começar agora. Vamos estudar?',
-    ],
-    noite: [
-      'O dia ainda não acabou. Um foco agora já conta!',
-      'Que tal fechar o dia com uma sessão de foco?',
-      'Mesmo alguns minutos de estudo já fazem diferença.',
-      'Ainda dá para cumprir uma pequena meta antes de descansar.',
-      'Vamos terminar o dia com a sensação de dever cumprido?',
-    ],
-  },
-  ativada: {
-    manha: [
-      'Mandou bem começando cedo! Continue assim.',
-      'Seu foco de hoje já começou. Bom trabalho!',
-      'O primeiro passo do dia já foi dado. Que ritmo bonito!',
-      'Você começou bem. Seu eu do futuro agradece.',
-      'Frequência ativada logo cedo. Continue construindo esse hábito!',
-    ],
-    tarde: [
-      'Você já estudou hoje. Que tal manter o ritmo?',
-      'Frequência ativada! Mais um foco pode deixar o dia ainda melhor.',
-      'Seu esforço de hoje já está contando. Muito bem!',
-      'Você está no caminho certo. Um pouco mais de foco?',
-      'A constância está aparecendo. Continue firme!',
-    ],
-    noite: [
-      'Você cumpriu seu foco de hoje. Parabéns!',
-      'Mais um dia na conta. Descanse sabendo que você avançou.',
-      'Hoje você fez a sua parte. Que orgulho!',
-      'Frequência garantida por hoje. Bom descanso!',
-      'Você não deixou o dia passar em branco. Muito bem!',
-    ],
-  },
-};
-
-function obterMensagemFrequencia(ativa: boolean) {
-  const agora = new Date();
-  const hora = agora.getHours();
-  const periodo = hora < 12 ? 'manha' : hora < 18 ? 'tarde' : 'noite';
-  const mensagens = MENSAGENS_FREQUENCIA[ativa ? 'ativada' : 'desativada'][periodo];
-  const indice = (agora.getDate() + hora) % mensagens.length;
-  return mensagens[indice];
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { usuario, loading } = useAuth();
@@ -91,14 +33,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!usuario) return;
-    fetch('/api/frequencia', { headers: { 'x-time-zone': Intl.DateTimeFormat().resolvedOptions().timeZone } }).then(r => r.json()).then(d => {
-      if (d.streak && d.frequencia_ativa !== undefined) {
-        setOfensiva({
-          streak_atual: d.streak.current,
-          maior_streak: d.streak.best,
-          frequencia_ativa: d.frequencia_ativa,
-        });
-      }
+    fetch('/api/ofensiva').then(r => r.json()).then(d => {
+      if (d.streak_atual !== undefined) setOfensiva(d);
     });
     fetch('/api/cronograma').then(r => r.json()).then(d => {
       if (d.cronograma) setCronograma(d.cronograma);
@@ -107,8 +43,7 @@ export default function DashboardPage() {
       if (d.config) setPomConfig(d.config);
     });
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      const respostasDiagnostico = d.progresso?.respostas_json?.diagnostico_inicial?.respostas || {};
-      setQuestionarioPendente(!(d.progresso?.concluido === true || d.progresso?.concluido === 'true' || Object.keys(respostasDiagnostico).length >= 10));
+      setQuestionarioPendente(Boolean(d.progresso && !d.progresso.concluido && d.progresso.respostas_json?.salvo_para_depois));
     });
   }, [usuario]);
 
@@ -119,7 +54,6 @@ export default function DashboardPage() {
   );
 
   const primeiroNome = usuario.nome?.split(' ')[0] || 'Usuário';
-  const mensagemFrequencia = obterMensagemFrequencia(ofensiva.frequencia_ativa);
 
   return (
     <div className="dashboard-page" style={{
@@ -195,22 +129,12 @@ export default function DashboardPage() {
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', marginTop: 8 }}>
-              <span style={{ color: ofensiva.frequencia_ativa ? '#FFDE68' : 'rgba(255,222,104,0.58)', fontSize: 80, fontWeight: 600, lineHeight: 1 }}>
+              <span style={{ color: '#FFDE68', fontSize: 80, fontWeight: 600, lineHeight: 1 }}>
                 {ofensiva.streak_atual}
               </span>
-              <span style={{ color: ofensiva.frequencia_ativa ? '#FFDE68' : 'rgba(255,222,104,0.58)', fontSize: 32, fontWeight: 600, marginLeft: 8, marginBottom: 1 }}>
+              <span style={{ color: '#FFDE68', fontSize: 32, fontWeight: 600, marginLeft: 8, marginBottom: 1 }}>
                 {ofensiva.streak_atual === 1 ? 'dia' : 'dias'}
               </span>
-            </div>
-            <div style={{
-              color: ofensiva.frequencia_ativa ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.72)',
-              fontSize: 15,
-              fontWeight: 600,
-              lineHeight: '22px',
-              maxWidth: 360,
-              marginTop: 10,
-            }}>
-              {mensagemFrequencia}
             </div>
           </div>
 
@@ -288,9 +212,8 @@ export default function DashboardPage() {
         }}>
           <div>
             {questionarioPendente && (
-              <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 16, background: '#091541', color: '#FFDE68', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <span>Você tem um questionário salvo para continuar.</span>
-                <button onClick={() => router.push('/questionario')} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#FFDE68', color: '#091541', fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins' }}>Voltar ao questionário</button>
+              <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 16, background: '#091541', color: '#FFDE68', fontWeight: 600 }}>
+                Você tem um questionário salvo para continuar. <button onClick={() => router.push('/questionario')} style={{ marginLeft: 8, color: '#FFFFFF', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>Retomar</button>
               </div>
             )}
             <div style={{ color: '#091541', fontSize: 24, fontWeight: 600 }}>Pomodoro</div>
@@ -305,7 +228,6 @@ export default function DashboardPage() {
           </div>
           <button
             onClick={() => router.push('/pomodoro')}
-            aria-label="Abrir Pomodoro"
             style={{
               width: 100,
               height: 100,

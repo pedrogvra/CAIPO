@@ -23,8 +23,7 @@ export default function FeedbackPage() {
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
       if (d.progresso) {
         const p = d.progresso;
-        const estado = p.respostas_json || {};
-        const respostas = (estado.diagnostico_inicial?.respostas || estado) as Record<string, Resposta>;
+        const respostas = (p.respostas_json || {}) as Record<string, Resposta>;
         const resultado = calcularPerfil(p.pontuacao_atual || 0, respostas, []);
         setPerfil(resultado);
       }

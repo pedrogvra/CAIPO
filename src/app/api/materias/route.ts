@@ -34,28 +34,8 @@ export async function POST(req: NextRequest) {
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
 
-    const body = await req.json();
-    const lista = Array.isArray(body.materias) ? body.materias : null;
+    const { nome, peso_prioridade, cor } = await req.json();
     const { isConfigured } = getSupabaseConnectionStatus();
-    if (lista) {
-      const valores = lista
-        .filter((materia: { nome?: string }) => typeof materia.nome === 'string' && materia.nome.trim())
-        .map((materia: { nome: string; peso_prioridade?: number; cor?: string }) => ({
-          usuario_id: payload.userId,
-          nome: materia.nome.trim(),
-          peso_prioridade: materia.peso_prioridade || 10,
-          cor: materia.cor || '#1E55A8',
-        }));
-      if (isConfigured) {
-        const inseridas = await supabaseInsert('materias', valores, { select: '*' });
-        return NextResponse.json({ materias: inseridas || [] });
-      }
-      if (!db) return NextResponse.json({ error: 'Banco não configurado' }, { status: 500 });
-      const inseridas = valores.length > 0 ? await db.insert(materias).values(valores).returning() : [];
-      return NextResponse.json({ materias: inseridas });
-    }
-
-    const { nome, peso_prioridade, cor } = body;
     if (isConfigured) {
       const inserted = await supabaseInsert('materias', {
         usuario_id: payload.userId,

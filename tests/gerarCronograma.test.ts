@@ -91,43 +91,6 @@ test('few subjects per day fills all available study days with 4 selected subjec
   assert.equal(byDay.size, 5, 'Expected each available day to have at least one subject');
 });
 
-test('fixed activity appears on its day without removing the daily subject count', () => {
-  const materias = ['A', 'B', 'C', 'D'].map(materia);
-  const sessions = gerarCronograma({
-    horario_acordar: '07:00',
-    horario_dormir: '23:00',
-    dias_disponiveis: [1, 2, 3, 4, 5],
-    materias,
-    atividades_fixas: [{
-      nome: 'Atividade fixa',
-      categoria: 'Trabalho',
-      dias_semana: [1],
-      horario_inicio: '08:00',
-      horario_fim: '09:30',
-    }],
-    tempo_max_sem_pausa: 50,
-    periodo_preferido: 'manha',
-    varias_materias_por_dia: false,
-    criar_dia_revisao: false,
-    estrategia_poucas: 'dividir_por_2',
-    variar_materias_por_dia: true,
-  });
-
-  const monday = sessions.filter((session) => session.dia_semana === 1);
-  const mondaySubjects = monday.filter((session) => session.tipo === 'estudo');
-  const fixed = monday.filter((session) => session.tipo === 'pausa');
-  const tuesdaySubjects = sessions.filter((session) => session.dia_semana === 2 && session.tipo === 'estudo');
-
-  assert.equal(fixed.length, 1);
-  assert.equal(fixed[0].materia, 'Atividade fixa');
-  assert.equal(fixed[0].categoria, 'Trabalho');
-  assert.equal(fixed[0].horario_inicio, '08:00');
-  assert.equal(fixed[0].horario_fim, '09:30');
-  assert.equal(new Set(mondaySubjects.map((session) => session.materia)).size, 2);
-  assert.equal(new Set(tuesdaySubjects.map((session) => session.materia)).size, 2);
-  assert.ok(mondaySubjects.every((session) => session.horario_fim <= '08:00' || session.horario_inicio >= '09:30'));
-});
-
 test('few subjects per day does not repeat a subject in the same day or push it to the next day', () => {
   const materias = ['Matemática', 'Português', 'História', 'Geografia', 'Física', 'Química'].map(materia);
   const sessions = gerarCronograma({

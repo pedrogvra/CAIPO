@@ -90,7 +90,6 @@ export const cronograma_sessoes = pgTable('cronograma_sessoes', {
   id: uuid('id').primaryKey().defaultRandom(),
   cronograma_id: uuid('cronograma_id').notNull().references(() => cronogramas.id, { onDelete: 'cascade' }),
   materia: text('materia').notNull(),
-  categoria: text('categoria'),
   dia_semana: integer('dia_semana').notNull(), // 0=Dom ... 6=Sab
   horario_inicio: text('horario_inicio').notNull(),
   horario_fim: text('horario_fim').notNull(),
@@ -190,31 +189,4 @@ export const conversas_caipo = pgTable('conversas_caipo', {
   contexto: text('contexto'),
   created_at: timestamp('created_at').defaultNow(),
   updated_at: timestamp('updated_at').defaultNow(),
-});
-
-export const frequencia_perguntas = pgTable('frequencia_perguntas', {
-  id: integer('id').primaryKey(),
-  categoria: text('categoria').notNull(),
-  pilar_id: integer('pilar_id').notNull(),
-  pergunta: text('pergunta').notNull(),
-  opcoes: jsonb('opcoes').notNull(),
-  respostas_caipo: jsonb('respostas_caipo').notNull(),
-  created_at: timestamp('created_at').defaultNow(),
-});
-
-export const frequencia_historico = pgTable('frequencia_historico', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
-  pergunta_id: integer('pergunta_id').notNull().references(() => frequencia_perguntas.id),
-  data: text('data').notNull(),
-  opcao_indice: integer('opcao_indice').notNull(),
-  resposta_usuario: text('resposta_usuario').notNull(),
-  created_at: timestamp('created_at').defaultNow(),
-});
-
-export const frequencia_perguntas_usadas = pgTable('frequencia_perguntas_usadas', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
-  pergunta_id: integer('pergunta_id').notNull().references(() => frequencia_perguntas.id),
-  created_at: timestamp('created_at').defaultNow(),
 });

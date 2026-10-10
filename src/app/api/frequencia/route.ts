@@ -58,16 +58,13 @@ function calculateStreaks(records: DailyRecord[], timeZone: string) {
 
   const today = getToday(timeZone);
   let current = 0;
-  const studiedToday = studied.has(today);
-  let cursor = studiedToday
-    ? today
-    : dateKey(new Date(new Date(`${today}T00:00:00.000Z`).getTime() - DAY_MS));
+  let cursor = today;
   while (studied.has(cursor)) {
     current += 1;
     cursor = dateKey(new Date(new Date(`${cursor}T00:00:00.000Z`).getTime() - DAY_MS));
   }
 
-  return { current, best, active_today: studiedToday };
+  return { current, best };
 }
 
 function buildSummary(records: DailyRecord[], plannedDays: number[], plannedActivities: number | null, timeZone: string) {
@@ -94,7 +91,6 @@ function buildSummary(records: DailyRecord[], plannedDays: number[], plannedActi
   return {
     has_history: hasHistory,
     streak: streaks,
-    frequencia_ativa: streaks.active_today,
     week: currentKeys.map((date, index) => ({ date, label: DAY_NAMES[index], studied: currentMinutes[index] > 0, minutes: currentMinutes[index] })),
     stats: {
       studied_days: studiedDays,

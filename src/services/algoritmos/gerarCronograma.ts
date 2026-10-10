@@ -2,7 +2,6 @@ import { Materia } from '@/types/cronograma';
 
 export interface SlotCronograma {
   materia: string;
-  categoria?: string;
   dia_semana: number;
   horario_inicio: string;
   horario_fim: string;
@@ -14,7 +13,7 @@ interface ConfigCronograma {
   horario_dormir: string;
   dias_disponiveis: number[];
   materias: Materia[];
-  atividades_fixas: Array<{ nome: string; categoria: string; dias_semana: number[]; horario_inicio: string; horario_fim: string }>;
+  atividades_fixas: Array<{ nome: string; dias_semana: number[]; horario_inicio: string; horario_fim: string }>;
   tempo_max_sem_pausa: number;
   periodo_preferido: string;
   varias_materias_por_dia: boolean;
@@ -719,23 +718,6 @@ function scheduleReviewDay(
   }));
 }
 
-function buildFixedActivitySessions(
-  atividades: ConfigCronograma['atividades_fixas'],
-) {
-  return atividades.flatMap((atividade) => {
-    const horarioInicio = timeToMinutes(atividade.horario_inicio);
-    const horarioFim = timeToMinutes(atividade.horario_fim);
-    return atividade.dias_semana.map((dia) => ({
-      materia: atividade.nome,
-      categoria: atividade.categoria,
-      dia_semana: dia,
-      horario_inicio: minutesToTime(horarioInicio),
-      horario_fim: minutesToTime(horarioFim),
-      tipo: 'pausa' as const,
-    }));
-  });
-}
-
 export function gerarCronograma(config: ConfigCronograma): SlotCronograma[] {
   if (!config.materias || config.materias.length === 0) {
     return [];
@@ -798,7 +780,7 @@ export function gerarCronograma(config: ConfigCronograma): SlotCronograma[] {
     return [];
   }
 
-  const sessions: SlotCronograma[] = buildFixedActivitySessions(config.atividades_fixas);
+  const sessions: SlotCronograma[] = [];
   
   if (config.varias_materias_por_dia) {
     sessions.push(...distributeWithBalance(config, studyDays, slotsByDay, subjectCounts));

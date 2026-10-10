@@ -11,7 +11,6 @@ interface Props {
 
 interface AtividadeFixa {
   nome: string;
-  categoria: string;
   dias_semana: number[];
   horario_inicio: string;
   horario_fim: string;
@@ -20,15 +19,15 @@ interface AtividadeFixa {
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const CORES_MATERIAS = ['#1E55A8', '#5395CF', '#0C3067', '#091541', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
 const MATERIAS_SUGERIDAS = ['Matemática', 'Português', 'História', 'Geografia', 'Física', 'Química', 'Biologia', 'Inglês'];
-const CATEGORIAS_ATIVIDADES = [
-  'Refeição',
-  'Aula / Escola',
-  'Trabalho',
-  'Esporte / Treino',
-  'Transporte / Deslocamento',
-  'Lazer / Pessoal',
-  'Outro',
-];
+const ATIVIDADES_SUGERIDAS: Record<string, string[]> = {
+  'Refeição': ['Café da manhã', 'Almoço', 'Café da tarde', 'Jantar'],
+  'Aula / Escola': ['Aula de Inglês', 'Aula de Matemática', 'Aula de História', 'Aula de Português'],
+  'Trabalho': ['Trabalho', 'Reunião'],
+  'Esporte / Treino': ['Treino de Academia', 'Treino de Futebol', 'Yoga', 'Corrida'],
+  'Transporte / Deslocamento': ['Deslocamento para trabalho', 'Deslocamento para escola'],
+  'Lazer / Pessoal': ['Tempo livre', 'Lazer', 'Descanso'],
+  'Outro': ['Outro'],
+};
 
 export default function CronogramaWizard({ onClose, onSuccess }: Props) {
   const [etapa, setEtapa] = useState(1);
@@ -42,7 +41,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
 
   // Etapa 2 - Atividades Fixas
   const [atividadesFixas, setAtividadesFixas] = useState<AtividadeFixa[]>([]);
-  const [novaAtividade, setNovaAtividade] = useState({ nome: '', categoria: '', dias_semana: [] as number[], horario_inicio: '08:00', horario_fim: '09:00' });
+  const [novaAtividade, setNovaAtividade] = useState({ nome: '', dias_semana: [] as number[], horario_inicio: '08:00', horario_fim: '09:00' });
 
   // Etapa 3 - Matérias
   const [materias, setMaterias] = useState<Materia[]>([]);
@@ -59,25 +58,9 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
   };
 
   const adicionarAtividade = () => {
-    if (!novaAtividade.nome.trim()) {
-      setErro('Informe o nome da atividade fixa.');
-      return;
-    }
-    if (!novaAtividade.categoria) {
-      setErro('Selecione uma categoria para a atividade fixa.');
-      return;
-    }
-    if (novaAtividade.dias_semana.length === 0) {
-      setErro('Selecione pelo menos um dia da semana para a atividade fixa.');
-      return;
-    }
-    if (novaAtividade.dias_semana.some(dia => !diasDisponiveis.includes(dia))) {
-      setErro('A atividade fixa só pode usar dias disponíveis para estudo.');
-      return;
-    }
+    if (!novaAtividade.nome) return;
     setAtividadesFixas(prev => [...prev, { ...novaAtividade }]);
-    setErro('');
-    setNovaAtividade({ nome: '', categoria: '', dias_semana: [], horario_inicio: '08:00', horario_fim: '09:00' });
+    setNovaAtividade({ nome: '', dias_semana: [], horario_inicio: '08:00', horario_fim: '09:00' });
   };
 
   const adicionarMateria = () => {
@@ -94,10 +77,6 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
   const handleFinalizar = async () => {
     if (materias.length === 0) { setErro('Adicione pelo menos uma matéria.'); return; }
     if (diasDisponiveis.length === 0) { setErro('Selecione pelo menos um dia disponível.'); return; }
-    if (atividadesFixas.some(atividade => atividade.dias_semana.some(dia => !diasDisponiveis.includes(dia)))) {
-      setErro('As atividades fixas só podem usar dias disponíveis para estudo.');
-      return;
-    }
     if (diaRevisaoSelecionado !== null && !diasDisponiveis.includes(diaRevisaoSelecionado)) {
       setErro('O dia de revisão precisa estar marcado como disponível para estudo.');
       return;
@@ -107,11 +86,32 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
     setErro('');
 
     try {
+      let persistedMaterias = [...materias];
+      const toPersist = persistedMaterias.filter(m => String(m.id).startsWith('temp-'));
+      if (toPersist.length > 0) {
+        for (const m of toPersist) {
+          try {
+            const r = await fetch('/api/materias', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nome: m.nome, peso_prioridade: m.peso_prioridade, cor: m.cor }),
+            });
+            if (!r.ok) continue;
+            const s = await r.json();
+            if (s && s.materia) {
+              const idx = persistedMaterias.findIndex(pm => pm.nome === s.materia.nome && String(pm.id).startsWith('temp-'));
+              if (idx !== -1) persistedMaterias[idx] = s.materia;
+            }
+          } catch {
+            continue;
+          }
+        }
+      }
+
       const sessoes = gerarCronograma({
         horario_acordar: horarioAcordar,
         horario_dormir: horarioDormir,
         dias_disponiveis: diasDisponiveis,
-        materias,
+        materias: persistedMaterias,
         atividades_fixas: atividadesFixas,
         tempo_max_sem_pausa: tempoMaxSemPausa,
         periodo_preferido: periodoPreferido,
@@ -136,29 +136,10 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
         }),
       });
 
-      if (!res.ok) {
-        const resposta = await res.json().catch(() => null);
-        throw new Error(resposta?.detalhe || resposta?.error || 'Erro ao salvar cronograma');
-      }
-
-      const materiasResponse = await fetch('/api/materias', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          materias: materias.map((materia) => ({
-            nome: materia.nome,
-            peso_prioridade: materia.peso_prioridade,
-            cor: materia.cor,
-          })),
-        }),
-      });
-      if (!materiasResponse.ok) {
-        const resposta = await materiasResponse.json().catch(() => null);
-        throw new Error(resposta?.error || 'Cronograma salvo, mas não foi possível salvar as matérias.');
-      }
+      if (!res.ok) throw new Error('Erro ao salvar cronograma');
       onSuccess();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro ao criar cronograma. Tente novamente.');
+      setErro('Erro ao criar cronograma. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -264,8 +245,12 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 <select
-                  value={novaAtividade.categoria}
-                  onChange={e => setNovaAtividade(p => ({ ...p, categoria: e.target.value }))}
+                  onChange={e => {
+                    const categoria = e.target.value;
+                    if (categoria && ATIVIDADES_SUGERIDAS[categoria]?.length > 0) {
+                      setNovaAtividade(p => ({ ...p, nome: ATIVIDADES_SUGERIDAS[categoria][0] }));
+                    }
+                  }}
                   style={{
                     ...inputStyle,
                     flex: 1,
@@ -277,9 +262,10 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 14px center',
                   }}
+                  defaultValue=""
                 >
                   <option value="">📋 Selecionar categoria...</option>
-                  {CATEGORIAS_ATIVIDADES.map(cat => (
+                  {Object.keys(ATIVIDADES_SUGERIDAS).map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
@@ -296,7 +282,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
 
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {DIAS_SEMANA.map((d, i) => (
-                  <button key={i} disabled={!diasDisponiveis.includes(i)} onClick={() => {
+                  <button key={i} onClick={() => {
                     const dias = novaAtividade.dias_semana;
                     setNovaAtividade(p => ({
                       ...p,
@@ -308,10 +294,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
                       borderColor: novaAtividade.dias_semana.includes(i) ? '#FFDE68' : 'rgba(255,255,255,0.3)',
                       background: novaAtividade.dias_semana.includes(i) ? 'rgba(255,222,104,0.2)' : 'transparent',
                       color: novaAtividade.dias_semana.includes(i) ? '#FFDE68' : 'white',
-                      opacity: diasDisponiveis.includes(i) ? 1 : 0.45,
-                      fontWeight: 600, fontSize: 13,
-                      cursor: diasDisponiveis.includes(i) ? 'pointer' : 'not-allowed',
-                      fontFamily: 'Poppins',
+                      fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins',
                     }}>
                     {d}
                   </button>
@@ -352,7 +335,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
                     background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 12px', marginBottom: 6,
                   }}>
                     <span style={{ color: 'white', fontSize: 14, fontWeight: 600 }}>
-                      {a.nome} ({a.categoria}) – {a.horario_inicio} às {a.horario_fim}
+                      {a.nome} – {a.horario_inicio} às {a.horario_fim}
                     </span>
                     <button onClick={() => setAtividadesFixas(prev => prev.filter((_, j) => j !== i))}
                       style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 18 }}>×</button>

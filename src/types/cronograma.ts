@@ -16,7 +16,6 @@ export interface CronogramaSessao {
   id: string;
   cronograma_id: string;
   materia: string;
-  categoria?: string | null;
   dia_semana: number;
   horario_inicio: string;
   horario_fim: string;

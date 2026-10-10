@@ -16,8 +16,6 @@ import alvoIcon from '../../../assets/icons/seta-de-alvo.svg';
 import tomateIcon from '../../../assets/icons/tomate.svg';
 import verificarIcon from '../../../assets/icons/verificar.svg';
 import cruzIcon from '../../../assets/icons/cruz.svg';
-import { calcularPerfil } from '@/services/algoritmos/calcularPerfil';
-import type { Resposta } from '@/types/questionario';
 
 interface OfensivaData {
   streak_atual: number;
@@ -27,8 +25,7 @@ interface OfensivaData {
 
 interface FrequenciaData {
   has_history: boolean;
-  frequencia_ativa: boolean;
-  streak: { current: number; best: number; active_today: boolean };
+  streak: { current: number; best: number };
   week: Array<{ date: string; label: string; studied: boolean; minutes: number }>;
   stats: { studied_days: number; total_minutes: number; routine_percent: number | null; pomodoros: number };
   previous_week_minutes: number;
@@ -36,19 +33,38 @@ interface FrequenciaData {
 }
 
 type PainelFrequencia = 'sequencia' | 'estatisticas' | null;
-type PerfilFeedback = ReturnType<typeof calcularPerfil>;
 
 type MensagemChat = { id: string; autor: 'caipo' | 'usuario'; texto: string };
 
 type PerguntaCaipo = {
-  id: number;
-  categoria?: string;
+  id: string;
   pergunta: string;
-  opcoes: string[];
-  respostas_caipo?: Record<string, string>;
+  opcoes?: string[];
+  resposta?: string;
 };
 
-type RespostaHistorico = { pergunta_id: number; opcao_indice: number; resposta_usuario: string };
+const BANCO_PERGUNTAS: PerguntaCaipo[] = [
+  {
+    id: 'q1',
+    pergunta: 'Como foi o seu foco no Pomodoro de hoje?',
+    opcoes: ['Muito bom!', 'Razoável', 'Tive dificuldade para focar'],
+  },
+  {
+    id: 'q2',
+    pergunta: 'O que mais te atrapalhou para se concentrar hoje?',
+    opcoes: ['O celular', 'Barulho ao redor', 'Cansaço', 'Nada, fluiu bem!'],
+  },
+  {
+    id: 'q3',
+    pergunta: 'Qual matéria você achou mais difícil hoje?',
+    opcoes: ['Matemática', 'Português', 'Ciências', 'História', 'Outra'],
+  },
+  {
+    id: 'q4',
+    pergunta: 'O que você pretende fazer de diferente amanhã para estudar ainda melhor?',
+    opcoes: ['Estudar mais cedo', 'Evitar o celular', 'Fazer mais pausas', 'Organizar o ambiente'],
+  },
+];
 
 const REACOES_CAIPO = [
   'Entendi! Obrigado por compartilhar isso comigo.',
@@ -96,13 +112,9 @@ export default function FrequenciaPage() {
   const [frequenciaAtiva, setFrequenciaAtiva] = useState<boolean | null>(null);
   const [frequenciaData, setFrequenciaData] = useState<FrequenciaData | null>(null);
   const [painelAberto, setPainelAberto] = useState<PainelFrequencia>(null);
-  const [feedbackAberto, setFeedbackAberto] = useState(false);
-  const [feedback, setFeedback] = useState<PerfilFeedback | null>(null);
-  const [carregandoFeedback, setCarregandoFeedback] = useState(false);
 
   const [chatAberto, setChatAberto] = useState(false);
   const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
-  const [perguntasDoDia, setPerguntasDoDia] = useState<PerguntaCaipo[]>([]);
   const [indicePergunta, setIndicePergunta] = useState(0);
   const [reacaoAtual, setReacaoAtual] = useState(0);
   const [caipoDigitando, setCaipoDigitando] = useState(false);
@@ -131,9 +143,9 @@ export default function FrequenciaPage() {
           setOfensiva({
             streak_atual: data.streak.current,
             maior_streak: data.streak.best,
-            frequencia_ativa: data.frequencia_ativa,
+            frequencia_ativa: data.streak.current > 0,
           });
-          setFrequenciaAtiva(data.frequencia_ativa);
+          setFrequenciaAtiva(data.streak.current > 0);
         })
         .catch(() => {
           setFrequenciaData(null);
@@ -159,61 +171,16 @@ export default function FrequenciaPage() {
 
   const ativa = frequenciaAtiva === true;
 
-  const abrirFeedback = async () => {
-    setFeedbackAberto(true);
-    if (feedback || carregandoFeedback) return;
-    setCarregandoFeedback(true);
-    try {
-      const response = await fetch('/api/questionario/progresso');
-      const data = await response.json();
-      if (data.progresso) {
-        const progresso = data.progresso;
-        const estado = progresso.respostas_json || {};
-        const respostas = (estado.diagnostico_inicial?.respostas || estado) as Record<string, Resposta>;
-        setFeedback(calcularPerfil(progresso.pontuacao_atual || 0, respostas, []));
-      }
-    } finally {
-      setCarregandoFeedback(false);
-    }
-  };
-
-  const abrirChat = async () => {
+  const abrirChat = () => {
     if (chatAberto) return;
-    let perguntas: PerguntaCaipo[] = [];
-    let perguntasHistorico: PerguntaCaipo[] = [];
-    let respondidas: RespostaHistorico[] = [];
-    try {
-      const response = await fetch('/api/frequencia/conversa', { headers: { 'x-time-zone': Intl.DateTimeFormat().resolvedOptions().timeZone } });
-      if (response.ok) {
-        const data = await response.json();
-        perguntas = Array.isArray(data.perguntas) ? data.perguntas : [];
-        perguntasHistorico = Array.isArray(data.perguntas_historico) ? data.perguntas_historico : [];
-        respondidas = Array.isArray(data.respondidas) ? data.respondidas : [];
-      }
-    } catch {
-      perguntas = [];
-    }
-    setPerguntasDoDia(perguntas);
-    const primeira = perguntas[0];
-    const historicoMensagens: MensagemChat[] = respondidas.flatMap((resposta) => {
-      const pergunta = perguntasHistorico.find((item) => item.id === resposta.pergunta_id);
-      if (!pergunta) return [];
-      const reacao = pergunta.respostas_caipo?.[String(resposta.opcao_indice)] || REACOES_CAIPO[resposta.opcao_indice % REACOES_CAIPO.length];
-      return [
-        { id: gerarId(), autor: 'caipo' as const, texto: pergunta.pergunta },
-        { id: gerarId(), autor: 'usuario' as const, texto: resposta.resposta_usuario },
-        { id: gerarId(), autor: 'caipo' as const, texto: reacao },
-      ];
-    });
+    const primeira = BANCO_PERGUNTAS[0];
     setMensagens([
       {
         id: gerarId(),
         autor: 'caipo',
         texto: 'Oi! Eu sou o Caipo! Que bom te ver por aqui. Vou te fazer algumas perguntinhas sobre os seus estudos, pode ser?',
       },
-      ...historicoMensagens,
       ...(primeira ? [{ id: gerarId(), autor: 'caipo' as const, texto: primeira.pergunta }] : []),
-      ...(!primeira && respondidas.length > 0 ? [{ id: gerarId(), autor: 'caipo' as const, texto: MENSAGEM_FINAL_CAIPO }] : []),
     ]);
     setIndicePergunta(0);
     setReacaoAtual(0);
@@ -222,43 +189,25 @@ export default function FrequenciaPage() {
     setChatAberto(true);
   };
 
-  const enviarResposta = async (opcao: string) => {
+  const enviarResposta = (opcao: string) => {
     const texto = opcao.trim();
-    if (!texto || indicePergunta >= perguntasDoDia.length) return;
+    if (!texto || indicePergunta >= BANCO_PERGUNTAS.length) return;
     if (enviandoRef.current) return;
     enviandoRef.current = true;
     setCaipoDigitando(true);
 
-    const perguntaAtual = perguntasDoDia[indicePergunta];
-    const opcaoIndice = perguntaAtual.opcoes.indexOf(texto);
-    const respostaSalva = await fetch('/api/frequencia/conversa', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pergunta_id: perguntaAtual.id,
-        opcao_indice: opcaoIndice,
-        resposta_usuario: texto,
-        time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      }),
-    }).catch(() => null);
-
-    if (!respostaSalva?.ok) {
-      setMensagens((prev) => [...prev, { id: gerarId(), autor: 'caipo', texto: 'Não consegui salvar sua resposta agora. Tente novamente.' }]);
-      setCaipoDigitando(false);
-      enviandoRef.current = false;
-      return;
-    }
+    const perguntaAtual = BANCO_PERGUNTAS[indicePergunta];
 
     setMensagens((prev) => [...prev, { id: gerarId(), autor: 'usuario', texto }]);
 
     const proximo = indicePergunta + 1;
     setIndicePergunta(proximo);
 
-    const reacao = perguntaAtual.respostas_caipo?.[String(opcaoIndice)] ?? REACOES_CAIPO[reacaoAtual % REACOES_CAIPO.length];
+    const reacao = perguntaAtual.resposta ?? REACOES_CAIPO[reacaoAtual % REACOES_CAIPO.length];
     setReacaoAtual((r) => r + 1);
 
     window.setTimeout(() => {
-      const proximaPergunta = perguntasDoDia[proximo];
+      const proximaPergunta = BANCO_PERGUNTAS[proximo];
       if (proximaPergunta) {
         setMensagens((prev) => [
           ...prev,
@@ -277,7 +226,6 @@ export default function FrequenciaPage() {
     { id: 'sequencia', texto: 'Ver minha sequência de estudos', acao: () => setPainelAberto('sequencia') },
     { id: 'estatisticas', texto: 'Minhas estatísticas da semana', acao: () => setPainelAberto('estatisticas') },
     { id: 'conversar', texto: 'Conversar com o Caipo', acao: abrirChat },
-    { id: 'feedback', texto: 'Rever meu feedback inicial', acao: abrirFeedback },
   ];
 
   const cardStyle: CSSProperties = {
@@ -368,7 +316,7 @@ export default function FrequenciaPage() {
         borderRadius: 2,
       };
 
-  const opcoesAtuais = indicePergunta < perguntasDoDia.length ? perguntasDoDia[indicePergunta]?.opcoes : undefined;
+  const opcoesAtuais = indicePergunta < BANCO_PERGUNTAS.length ? BANCO_PERGUNTAS[indicePergunta]?.opcoes : undefined;
 
   return (
     <div className="flex flex-1 flex-col h-full w-full gap-6 bg-transparent">
@@ -691,84 +639,6 @@ export default function FrequenciaPage() {
         </div>
       )}
 
-      {feedbackAberto && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Meu feedback inicial"
-          onClick={() => setFeedbackAberto(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 950,
-            background: 'rgba(0,0,0,0.7)',
-            padding: isCompact ? 12 : 24,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <div
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: 620,
-              maxHeight: 'calc(100vh - 32px)',
-              overflowY: 'auto',
-              background: 'linear-gradient(156deg, #1E55A8 0%, #091541 100%)',
-              borderRadius: 20,
-              padding: isCompact ? 18 : 28,
-              boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
-              color: 'white',
-              fontFamily: 'Poppins',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
-              <h2 style={{ margin: 0, fontSize: isCompact ? 22 : 30, fontWeight: 600 }}>Meu feedback inicial</h2>
-              <button
-                type="button"
-                aria-label="Fechar feedback"
-                onClick={() => setFeedbackAberto(false)}
-                style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: 28, lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </div>
-
-            {carregandoFeedback ? (
-              <div style={{ padding: 20, textAlign: 'center', fontWeight: 600 }}>Carregando seu feedback...</div>
-            ) : !feedback ? (
-              <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 20, lineHeight: '26px', fontWeight: 600 }}>
-                Seu feedback inicial ainda não está disponível. Conclua o questionário para visualizar seu perfil.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 18 }}>
-                  <div style={{ color: '#FFDE68', fontSize: 14, fontWeight: 700, textTransform: 'uppercase' }}>Seu perfil de estudante</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, lineHeight: '30px', marginTop: 5 }}>{feedback.descricao}</div>
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 18 }}>
-                  <div style={{ color: '#FFDE68', fontSize: 18, fontWeight: 600, marginBottom: 10 }}>Seus pontos fortes</div>
-                  {feedback.pontos_fortes.map((ponto, index) => (
-                    <div key={index} style={{ display: 'flex', gap: 10, lineHeight: '24px', marginBottom: 7, fontWeight: 600 }}>
-                      <span style={{ color: '#FFDE68' }}>•</span>{ponto}
-                    </div>
-                  ))}
-                </div>
-                <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 18 }}>
-                  <div style={{ color: '#F8FF87', fontSize: 18, fontWeight: 600, marginBottom: 10 }}>Hábitos a desenvolver</div>
-                  {feedback.habitos_desenvolver.map((habito, index) => (
-                    <div key={index} style={{ display: 'flex', gap: 10, lineHeight: '24px', marginBottom: 7, fontWeight: 600 }}>
-                      <span style={{ color: '#F8FF87' }}>•</span>{habito}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {chatAberto && (
         <div
           style={{
@@ -902,7 +772,7 @@ export default function FrequenciaPage() {
               </div>
             )}
 
-            {!caipoDigitando && indicePergunta >= perguntasDoDia.length && (
+            {!caipoDigitando && indicePergunta >= BANCO_PERGUNTAS.length && (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '0 16px 12px', flexShrink: 0 }}>
                 <button
                   type="button"
