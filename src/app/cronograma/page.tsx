@@ -19,7 +19,7 @@ export default function CronogramaPage() {
   const [materias, setMaterias] = useState<Array<{ id: string; nome: string; cor?: string }>>([]);
   const [mostrando, setMostrando] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [bloqueado, setBloqueado] = useState(false);
+  const [bloqueado, setBloqueado] = useState(true);
 
   const diasParaExibir = cronograma?.dias_disponiveis && cronograma.dias_disponiveis.length > 0
     ? [...new Set(cronograma.dias_disponiveis)].sort((a, b) => a - b)
@@ -45,8 +45,8 @@ export default function CronogramaPage() {
   useEffect(() => {
     if (!usuario) return;
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setBloqueado(Boolean(!d.progresso?.concluido && d.progresso?.respostas_json?.salvo_para_depois));
-    });
+      setBloqueado(d.progresso?.concluido !== true);
+    }).catch(() => setBloqueado(true));
   }, [usuario]);
 
   useEffect(() => {

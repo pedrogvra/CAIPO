@@ -3,6 +3,7 @@ import { db, isDatabaseConfigured } from '@/db';
 import { cronogramas, cronograma_sessoes } from '@/db/schema';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
 import { getSupabaseConnectionStatus, supabaseDelete, supabaseInsert, supabaseSelect } from '@/lib/supabase-data';
+import { questionarioConcluido } from '@/lib/questionario-access';
 import { eq, desc } from 'drizzle-orm';
 
 async function deleteUserCronogramasSupabase(userId: string) {
@@ -31,6 +32,9 @@ export async function GET(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!await questionarioConcluido(payload.userId)) {
+      return NextResponse.json({ error: 'Conclua o questionário para acessar o cronograma.', questionario_pendente: true }, { status: 403 });
+    }
 
     const { isConfigured } = getSupabaseConnectionStatus();
     if (isConfigured) {
@@ -84,6 +88,9 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!await questionarioConcluido(payload.userId)) {
+      return NextResponse.json({ error: 'Conclua o questionário para acessar o cronograma.', questionario_pendente: true }, { status: 403 });
+    }
 
     const body = await req.json();
     const { nome, horario_acordar, horario_dormir, dias_disponiveis, periodo_preferido,

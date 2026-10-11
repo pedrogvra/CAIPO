@@ -4,6 +4,7 @@ import { materias } from '@/db/schema';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import { getSupabaseConnectionStatus, supabaseSelect, supabaseInsert, supabaseDelete } from '@/lib/supabase-data';
+import { questionarioConcluido } from '@/lib/questionario-access';
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,6 +12,9 @@ export async function GET(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!await questionarioConcluido(payload.userId)) {
+      return NextResponse.json({ error: 'Conclua o questionário para acessar as matérias.', questionario_pendente: true }, { status: 403 });
+    }
 
     const { isConfigured } = getSupabaseConnectionStatus();
     if (isConfigured) {
@@ -33,6 +37,9 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!await questionarioConcluido(payload.userId)) {
+      return NextResponse.json({ error: 'Conclua o questionário para acessar as matérias.', questionario_pendente: true }, { status: 403 });
+    }
 
     const { nome, peso_prioridade, cor } = await req.json();
     const { isConfigured } = getSupabaseConnectionStatus();
@@ -68,6 +75,9 @@ export async function DELETE(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!await questionarioConcluido(payload.userId)) {
+      return NextResponse.json({ error: 'Conclua o questionário para acessar as matérias.', questionario_pendente: true }, { status: 403 });
+    }
 
     const { id } = await req.json();
     const { isConfigured } = getSupabaseConnectionStatus();

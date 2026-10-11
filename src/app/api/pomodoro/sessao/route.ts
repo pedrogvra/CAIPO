@@ -3,6 +3,7 @@ import { db, isDatabaseConfigured } from '@/db';
 import { pomodoro_sessoes, ofensiva, historico_diario } from '@/db/schema';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
 import { getSupabaseConnectionStatus, supabaseInsert, supabaseSelect, supabaseUpdate } from '@/lib/supabase-data';
+import { questionarioConcluido } from '@/lib/questionario-access';
 import { eq, and, desc } from 'drizzle-orm';
 import { getToday } from '@/lib/utils';
 
@@ -12,6 +13,9 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!await questionarioConcluido(payload.userId)) {
+      return NextResponse.json({ error: 'Conclua o questionário para usar o Pomodoro.', questionario_pendente: true }, { status: 403 });
+    }
 
     const body = await req.json();
     const timeZone = typeof body.time_zone === 'string' && body.time_zone.length > 0 ? body.time_zone : undefined;

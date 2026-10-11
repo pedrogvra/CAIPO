@@ -77,7 +77,7 @@ export default function PomodoroPage() {
   const [mensagemCaipo, setMensagemCaipo] = useState<string | undefined>();
   const [materiaNome, setMateriaNome] = useState('');
   const [materias, setMaterias] = useState<Array<{ id: string; nome: string }>>([]);
-  const [bloqueado, setBloqueado] = useState(false);
+  const [bloqueado, setBloqueado] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const [materiaAberto, setMateriaAberto] = useState(false);
   const [modoAtivo, setModoAtivo] = useState<Modo>('focus');
@@ -124,8 +124,8 @@ export default function PomodoroPage() {
   useEffect(() => {
     if (!usuario) return;
     fetch('/api/questionario/progresso').then((r) => r.json()).then((d) => {
-      setBloqueado(Boolean(!d.progresso?.concluido && d.progresso?.respostas_json?.salvo_para_depois));
-    });
+      setBloqueado(d.progresso?.concluido !== true);
+    }).catch(() => setBloqueado(true));
   }, [usuario]);
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, isDatabaseConfigured } from '@/db';
 import { pomodoro_config } from '@/db/schema';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
+import { questionarioConcluido } from '@/lib/questionario-access';
 import { eq } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
@@ -10,6 +11,9 @@ export async function GET(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!await questionarioConcluido(payload.userId)) {
+      return NextResponse.json({ error: 'Conclua o questionário para acessar o Pomodoro.', questionario_pendente: true }, { status: 403 });
+    }
 
     if (!isDatabaseConfigured || !db) {
       return NextResponse.json({ config: { tempo_foco: 25, tempo_pausa_curta: 5, tempo_pausa_longa: 15, sessoes_antes_pausa_longa: 4 } });
@@ -32,6 +36,9 @@ export async function PATCH(req: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
     const payload = await verifyToken(token);
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+    if (!await questionarioConcluido(payload.userId)) {
+      return NextResponse.json({ error: 'Conclua o questionário para acessar o Pomodoro.', questionario_pendente: true }, { status: 403 });
+    }
 
     if (!isDatabaseConfigured || !db) {
       return NextResponse.json({ success: true, config: { tempo_foco: 25, tempo_pausa_curta: 5, tempo_pausa_longa: 15, sessoes_antes_pausa_longa: 4 } });

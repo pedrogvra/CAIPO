@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const [ofensiva, setOfensiva] = useState<OfensivaData>({ streak_atual: 0, maior_streak: 0, frequencia_ativa: false });
   const [cronograma, setCronograma] = useState<CronogramaData | null>(null);
   const [pomConfig, setPomConfig] = useState<PomodoroConfigData>({ tempo_foco: 25 });
-  const [questionarioPendente, setQuestionarioPendente] = useState(false);
+  const [questionarioPendente, setQuestionarioPendente] = useState(true);
 
   useEffect(() => {
     if (!loading && !usuario) router.push('/login');
@@ -43,8 +43,8 @@ export default function DashboardPage() {
       if (d.config) setPomConfig(d.config);
     });
     fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setQuestionarioPendente(Boolean(d.progresso && !d.progresso.concluido && d.progresso.respostas_json?.salvo_para_depois));
-    });
+      setQuestionarioPendente(d.progresso?.concluido !== true);
+    }).catch(() => setQuestionarioPendente(true));
   }, [usuario]);
 
   if (loading || !usuario) return (
@@ -213,7 +213,7 @@ export default function DashboardPage() {
           <div>
             {questionarioPendente && (
               <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 16, background: '#091541', color: '#FFDE68', fontWeight: 600 }}>
-                Você tem um questionário salvo para continuar. <button onClick={() => router.push('/questionario')} style={{ marginLeft: 8, color: '#FFFFFF', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>Retomar</button>
+                Conclua o questionário inicial para liberar o cronograma e o Pomodoro. <button onClick={() => router.push('/questionario')} style={{ marginLeft: 8, color: '#FFFFFF', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>Abrir questionário</button>
               </div>
             )}
             <div style={{ color: '#091541', fontSize: 24, fontWeight: 600 }}>Pomodoro</div>
