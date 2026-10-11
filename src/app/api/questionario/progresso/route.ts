@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
 import { getSupabaseConnectionStatus, supabaseSelect, supabaseInsert, supabaseUpdate, supabaseDelete } from '@/lib/supabase-data';
+import { DIAGNOSTICO_PERGUNTAS } from '@/services/caipo/diagnosticoInicial';
 
 type ProgressoFallback = {
   usuario_id: string;
@@ -17,7 +18,7 @@ function normalizarProgresso(progresso: ProgressoFallback): ProgressoFallback {
     diagnostico_inicial?: { respostas?: Record<string, unknown> };
   };
   const concluido = progresso.concluido
-    || Object.keys(respostas?.diagnostico_inicial?.respostas || {}).length >= 10;
+    || Object.keys(respostas?.diagnostico_inicial?.respostas || {}).length >= DIAGNOSTICO_PERGUNTAS.length;
 
   const precisaNormalizar = (!progresso.concluido && concluido)
     || (concluido && Boolean(respostas?.salvo_para_depois));
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const respostas_json = body.respostas_json || {};
     const concluido = body.concluido === true
-      || Object.keys(respostas_json?.diagnostico_inicial?.respostas || {}).length >= 10;
+      || Object.keys(respostas_json?.diagnostico_inicial?.respostas || {}).length >= DIAGNOSTICO_PERGUNTAS.length;
     if (concluido) delete respostas_json.salvo_para_depois;
 
     const { isConfigured } = getSupabaseConnectionStatus();
@@ -140,6 +141,10 @@ export async function POST(req: NextRequest) {
         on_conflict: 'usuario_id',
         select: '*',
       });
+
+      if (concluido) {
+        await supabaseUpdate('usuarios', { primeiro_acesso: false }, { id: `eq.${payload.userId}` });
+      }
 
       return NextResponse.json({ success: true });
     } catch (err) {

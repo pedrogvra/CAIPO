@@ -2,6 +2,7 @@ import { db, isDatabaseConfigured } from '@/db';
 import { questionario_progresso } from '@/db/schema';
 import { getSupabaseConnectionStatus, supabaseSelect } from '@/lib/supabase-data';
 import { eq } from 'drizzle-orm';
+import { DIAGNOSTICO_PERGUNTAS } from '@/services/caipo/diagnosticoInicial';
 
 type Progresso = {
   concluido?: boolean | string | null;
@@ -11,7 +12,7 @@ type Progresso = {
 function progressoConcluido(progresso?: Progresso | null) {
   return progresso?.concluido === true
     || progresso?.concluido === 'true'
-    || Object.keys(progresso?.respostas_json?.diagnostico_inicial?.respostas || {}).length >= 10;
+    || Object.keys(progresso?.respostas_json?.diagnostico_inicial?.respostas || {}).length >= DIAGNOSTICO_PERGUNTAS.length;
 }
 
 export async function questionarioConcluido(usuarioId: string) {
