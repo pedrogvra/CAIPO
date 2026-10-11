@@ -105,6 +105,13 @@ export async function supabaseSelect<T>(table: string, params: SupabaseQueryPara
   return request<T>(table, { method: 'GET' }, params);
 }
 
+export async function supabaseRpc<T>(functionName: string, params: Record<string, unknown>) {
+  return request<T>(`rpc/${functionName}`, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 export async function supabaseInsert<T>(table: string, values: unknown, params: SupabaseQueryParams = {}) {
   return request<T>(table, {
     method: 'POST',

@@ -53,7 +53,7 @@ export default function OnboardingPage() {
   };
 
   if (loading || !usuario) return (
-    <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
     </div>
   );

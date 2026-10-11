@@ -154,7 +154,7 @@ function updateEstadoAtualWithAnswer(
 
 export default function QuestionarioPage() {
   const router = useRouter();
-  const { usuario, loading } = useAuth();
+  const { usuario, loading, setQuestionarioConcluido } = useAuth();
 
   const [conversation, setConversation] = useState<ConversationResponse | null>(null);
   const [estadoAtual, setEstadoAtual] = useState<EstadoAtual>({});
@@ -272,6 +272,7 @@ export default function QuestionarioPage() {
       const concluded = nextConversation.etapa === 'feedback_pendente' || nextConversation.etapa === 'finalizado';
 
       await saveProgress(nextState, concluded);
+      if (concluded) setQuestionarioConcluido(true);
       setEstadoAtual(nextState);
       setConversation(nextConversation);
       setSelectedOptions([]);
@@ -295,6 +296,7 @@ export default function QuestionarioPage() {
 
     try {
       await saveProgress({ ...estadoAtual, salvo_para_depois: true });
+      setQuestionarioConcluido(false);
       router.push('/dashboard');
     } catch (err) {
       console.error('Erro ao salvar para continuar depois:', err);
@@ -306,7 +308,7 @@ export default function QuestionarioPage() {
 
   if (loading || !usuario || loadingState) {
     return (
-      <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
       </div>
     );

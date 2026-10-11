@@ -26,15 +26,15 @@ export const DIAGNOSTICO_PERGUNTAS: DiagnosticoPergunta[] = [
   },
   {
     id: 'q4',
-    texto: 'Qual método você sente que te ajuda MAIS?',
-    opcoes: ['Revisão espaçada', 'Explicar pra alguém', 'Exercícios', 'Resumos', 'Videoaulas', 'Anotações'],
-    pontos: { 'Revisão espaçada': 10, 'Explicar pra alguém': 8, 'Exercícios': 6, 'Resumos': 4, 'Videoaulas': 2, 'Anotações': 0 },
+    texto: 'Qual método mais ajuda você a aprender?',
+    opcoes: ['Revisão espaçada', 'Explicar para alguém', 'Exercícios', 'Resumos', 'Videoaulas', 'Anotações'],
+    pontos: { 'Revisão espaçada': 10, 'Explicar para alguém': 8, 'Explicar pra alguém': 8, 'Exercícios': 6, 'Resumos': 4, 'Videoaulas': 2, 'Anotações': 0 },
   },
   {
     id: 'q5',
     texto: 'Quando você não entende um conteúdo, o que costuma fazer?',
-    opcoes: ['Procuro outra explicação', 'Peço ajuda', 'Faço exercícios', 'Releio', 'Deixo pra depois'],
-    pontos: { 'Procuro outra explicação': 10, 'Peço ajuda': 8, 'Faço exercícios': 6, 'Releio': 4, 'Deixo pra depois': 0 },
+    opcoes: ['Procuro outra explicação', 'Peço ajuda', 'Faço exercícios', 'Releio', 'Deixo para depois'],
+    pontos: { 'Procuro outra explicação': 10, 'Peço ajuda': 8, 'Faço exercícios': 6, 'Releio': 4, 'Deixo para depois': 0, 'Deixo pra depois': 0 },
   },
   {
     id: 'q6',
@@ -56,9 +56,9 @@ export const DIAGNOSTICO_PERGUNTAS: DiagnosticoPergunta[] = [
   },
   {
     id: 'q9',
-    texto: 'Com que frequência se sente ansioso/frustrado/entediado ao estudar?',
-    opcoes: ['Nunca', 'Raramente', 'Às vezes', 'Muito frequente'],
-    pontos: { 'Nunca': 10, 'Raramente': 6, 'Às vezes': 3, 'Muito frequente': 0 },
+    texto: 'Com que frequência você sente ansiedade, frustração ou tédio ao estudar?',
+    opcoes: ['Nunca', 'Raramente', 'Às vezes', 'Com muita frequência'],
+    pontos: { 'Nunca': 10, 'Raramente': 6, 'Às vezes': 3, 'Com muita frequência': 0, 'Muito frequente': 0 },
   },
   {
     id: 'q10',
@@ -83,10 +83,10 @@ export function classificarDiagnostico(pontuacao: number) {
 
 export function buildResumoDiagnostico(classificacao: string) {
   if (classificacao === 'regulado') {
-    return 'Analisando tudo que você me contou, dá pra ver que você já tem hábitos fortes e vamos montar um cronograma que aproveite essa base. Bora montar seu cronograma?';
+    return 'Com base no que você me contou, você já tem bons hábitos de estudo. Vamos montar um cronograma que aproveite essa base?';
   }
   if (classificacao === 'parcialmente regulado') {
-    return 'Analisando tudo que você me contou, dá pra ver que você já tem algumas estratégias boas e a gente vai trabalhar nos pontos que ainda precisam de força. Bora montar seu cronograma?';
+    return 'Você já tem algumas estratégias que funcionam. Vamos fortalecer os pontos que precisam de atenção e montar seu cronograma?';
   }
-  return 'Analisando tudo que você me contou, dá pra ver que você ainda está construindo seus hábitos de estudo. Vamos montar um cronograma leve e eficiente para você ganhar confiança. Bora lá?';
+  return 'Você ainda está desenvolvendo seus hábitos de estudo. Vamos montar um cronograma leve e eficiente para ajudar você a ganhar confiança.';
 }

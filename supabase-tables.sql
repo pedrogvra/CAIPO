@@ -80,6 +80,28 @@ CREATE TABLE IF NOT EXISTS pomodoro_sessoes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS pomodoro_sessoes_usuario_status_created_idx
+  ON pomodoro_sessoes (usuario_id, status, created_at);
+
+CREATE OR REPLACE FUNCTION public.caipo_frequencia_sessoes_diarias(p_usuario_id UUID, p_time_zone TEXT)
+RETURNS TABLE(data TEXT, tempo_total DOUBLE PRECISION, sessoes_concluidas DOUBLE PRECISION)
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT
+    TO_CHAR((sessao.created_at AT TIME ZONE p_time_zone)::DATE, 'YYYY-MM-DD') AS data,
+    SUM(COALESCE(NULLIF(sessao.duracao_real, 0), sessao.duracao_planejada, 0))::DOUBLE PRECISION AS tempo_total,
+    COUNT(*)::DOUBLE PRECISION AS sessoes_concluidas
+  FROM public.pomodoro_sessoes AS sessao
+  WHERE sessao.usuario_id = p_usuario_id
+    AND sessao.status = 'concluida'
+  GROUP BY 1
+  ORDER BY 1;
+$$;
+
+REVOKE ALL ON FUNCTION public.caipo_frequencia_sessoes_diarias(UUID, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.caipo_frequencia_sessoes_diarias(UUID, TEXT) TO service_role;
+
 CREATE TABLE IF NOT EXISTS pomodoro_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id UUID NOT NULL UNIQUE REFERENCES usuarios(id) ON DELETE CASCADE,

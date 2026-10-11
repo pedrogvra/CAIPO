@@ -7,7 +7,7 @@ import HeaderUsuario from '@/components/layout/HeaderUsuario';
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
-  const { usuario, loading, atualizarNome } = useAuth();
+  const { usuario, loading, atualizarNome, setQuestionarioConcluido } = useAuth();
   const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [refazendo, setRefazendo] = useState(false);
   const [nome, setNome] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export default function ConfiguracoesPage() {
     setRefazendo(true);
     const response = await fetch('/api/questionario/progresso', { method: 'DELETE' });
     if (response.ok) {
+      setQuestionarioConcluido(false);
       router.push('/questionario');
     } else {
       setRefazendo(false);
@@ -48,7 +49,7 @@ export default function ConfiguracoesPage() {
   };
 
   if (loading || !usuario) return (
-    <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
     </div>
   );
@@ -110,7 +111,7 @@ export default function ConfiguracoesPage() {
                 {erroNome && <p id="nome-perfil-erro" role="alert" style={{ color: '#fecaca', fontWeight: 600, marginTop: 10 }}>{erroNome}</p>}
                 {mensagemNome && <p id="nome-perfil-sucesso" role="status" style={{ color: '#bbf7d0', fontWeight: 600, marginTop: 10 }}>{mensagemNome}</p>}
               </form>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 600, marginTop: 16, marginBottom: 6 }}>Email</div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 600, marginTop: 16, marginBottom: 6 }}>E-mail</div>
               <div style={{ color: 'white', fontSize: 20, fontWeight: 600 }}>{usuario.email}</div>
             </div>
           </div>

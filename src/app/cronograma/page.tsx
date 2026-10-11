@@ -14,12 +14,11 @@ const HORAS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')
 
 export default function CronogramaPage() {
   const router = useRouter();
-  const { usuario, loading } = useAuth();
+  const { usuario, loading, questionarioStatus, refreshQuestionario } = useAuth();
   const [cronograma, setCronograma] = useState<CronogramaCompleto | null>(null);
   const [materias, setMaterias] = useState<Array<{ id: string; nome: string; cor?: string }>>([]);
   const [mostrando, setMostrando] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [bloqueado, setBloqueado] = useState(true);
 
   const diasParaExibir = cronograma?.dias_disponiveis && cronograma.dias_disponiveis.length > 0
     ? [...new Set(cronograma.dias_disponiveis)].sort((a, b) => a - b)
@@ -31,7 +30,6 @@ export default function CronogramaPage() {
 
   const loadCronograma = () => {
     if (!usuario) return;
-    setLoadingData(true);
     Promise.all([
       fetch('/api/cronograma').then(r => r.json()),
       fetch('/api/materias').then(r => r.json()).catch(() => ({ materias: [] })),
@@ -43,24 +41,32 @@ export default function CronogramaPage() {
   };
 
   useEffect(() => {
-    if (!usuario) return;
-    fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setBloqueado(d.progresso?.concluido !== true);
-    }).catch(() => setBloqueado(true));
-  }, [usuario]);
-
-  useEffect(() => {
-    loadCronograma();
+    if (questionarioStatus === 'concluido') loadCronograma();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario]);
+  }, [usuario, questionarioStatus]);
 
   if (loading || !usuario) return (
-    <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
     </div>
   );
 
-  if (bloqueado) return (
+  if (questionarioStatus === 'loading') return (
+    <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
+    </div>
+  );
+
+  if (questionarioStatus === 'erro') return (
+    <div className="flex flex-1 items-center justify-center p-6">
+      <div role="alert" style={{ color: 'white', textAlign: 'center' }}>
+        <p>Não foi possível verificar se você concluiu o questionário.</p>
+        <button onClick={() => void refreshQuestionario()} style={{ marginTop: 16, padding: '12px 20px', border: 0, borderRadius: 10, background: '#FFDE68', color: '#091541', fontWeight: 600, cursor: 'pointer' }}>Tentar novamente</button>
+      </div>
+    </div>
+  );
+
+  if (questionarioStatus === 'pendente') return (
     <div className="flex flex-1 items-center justify-center p-6">
       <div style={{ width: '100%', maxWidth: 440, padding: 28, borderRadius: 20, background: 'linear-gradient(156deg, #2864B8 0%, #173B78 100%)', color: 'white', textAlign: 'center', boxShadow: '6px 6px 10.6px rgba(0,0,0,0.25)' }}>
         <h1 style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, marginBottom: 16 }}>Questionário necessário</h1>
@@ -81,7 +87,7 @@ export default function CronogramaPage() {
         <div className="flex-1 w-full overflow-hidden rounded-2xl bg-[#1A4B9A] p-6 flex flex-col shadow-[6px_6px_10.6px_rgba(0,0,0,0.25)]" style={{ padding: 'var(--page-padding)' }}>
           {/* Título */}
           <div style={{ color: '#FFDE68', fontSize: 36, fontWeight: 600, marginBottom: 16 }}>
-            Último cronograma feito
+            Seu último cronograma
           </div>
 
           {/* Área do cronograma */}

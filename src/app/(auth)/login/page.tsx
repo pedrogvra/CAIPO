@@ -77,13 +77,13 @@ export default function LoginPage() {
         <h1 className="auth-form-title">Login</h1>
 
         <div className="auth-form-field">
-          <label className="auth-form-label">Email</label>
+          <label className="auth-form-label">E-mail</label>
           <input
             className="auth-form-input"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="Digite seu email"
+            placeholder="Digite seu e-mail"
           />
         </div>
 
@@ -129,7 +129,7 @@ export default function LoginPage() {
 
         <div className="auth-form-row">
           <Link href="/recuperar-senha" className="auth-form-link">
-            Esqueci a senha
+            Recuperar senha
           </Link>
         </div>
 

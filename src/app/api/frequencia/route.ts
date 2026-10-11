@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, isDatabaseConfigured } from '@/db';
 import { cronograma_sessoes, cronogramas, historico_diario, pomodoro_sessoes } from '@/db/schema';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
-import { getSupabaseConnectionStatus, supabaseSelect } from '@/lib/supabase-data';
-import { and, eq } from 'drizzle-orm';
+import { getSupabaseConnectionStatus, supabaseRpc, supabaseSelect } from '@/lib/supabase-data';
+import { and, eq, sql } from 'drizzle-orm';
 import { getToday } from '@/lib/utils';
 
 type DailyRecord = { data: string; tempo_total?: number | null; sessoes_concluidas?: number | null };
-type StudySession = { created_at: Date | string | null; duracao_real?: number | null; duracao_planejada: number; status?: string | null };
+type AggregatedDailyRecord = Omit<DailyRecord, 'data'> & { data: string | null };
+type StudySession = { created_at: Date | string | null; duracao_real?: number | null; duracao_planejada: number };
 
 const DAY_NAMES = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const DAY_MS = 86400000;
@@ -17,6 +18,10 @@ function startOfWeek(date: string) {
   const day = value.getUTCDay();
   value.setUTCDate(value.getUTCDate() - (day === 0 ? 6 : day - 1));
   return value;
+}
+
+function dateKey(value: Date) {
+  return value.toISOString().slice(0, 10);
 }
 
 function localDateKey(value: Date | string, timeZone: string) {
@@ -30,8 +35,24 @@ function localDateKey(value: Date | string, timeZone: string) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function dateKey(value: Date) {
-  return value.toISOString().slice(0, 10);
+function aggregateSessions(sessions: StudySession[], timeZone: string): DailyRecord[] {
+  const recordsByDate = new Map<string, DailyRecord>();
+
+  for (const session of sessions) {
+    if (!session.created_at) continue;
+    const data = localDateKey(session.created_at, timeZone);
+    const record = recordsByDate.get(data);
+    const duration = session.duracao_real || session.duracao_planejada || 0;
+
+    if (record) {
+      record.tempo_total = (record.tempo_total || 0) + duration;
+      record.sessoes_concluidas = (record.sessoes_concluidas || 0) + 1;
+    } else {
+      recordsByDate.set(data, { data, tempo_total: duration, sessoes_concluidas: 1 });
+    }
+  }
+
+  return [...recordsByDate.values()];
 }
 
 function weekKeys(start: Date) {
@@ -116,20 +137,34 @@ export async function GET(req: NextRequest) {
     let plannedActivities: number | null = null;
 
     if (getSupabaseConnectionStatus().isConfigured) {
-      const sessoes = await supabaseSelect<StudySession[]>('pomodoro_sessoes', { select: 'created_at,duracao_real,duracao_planejada,status', usuario_id: `eq.${payload.userId}`, status: 'eq.concluida', order: 'created_at.asc' }) || [];
-      records = sessoes.length > 0 ? sessoes.reduce<DailyRecord[]>((accumulator, session) => {
-        if (!session.created_at) return accumulator;
-        const data = localDateKey(session.created_at, timeZone);
-        const existing = accumulator.find((record) => record.data === data);
-        const duration = session.duracao_real || session.duracao_planejada || 0;
-        if (existing) {
-          existing.tempo_total = (existing.tempo_total || 0) + duration;
-          existing.sessoes_concluidas = (existing.sessoes_concluidas || 0) + 1;
-        } else {
-          accumulator.push({ data, tempo_total: duration, sessoes_concluidas: 1 });
+      let aggregatedSessions: AggregatedDailyRecord[] | null = null;
+      try {
+        aggregatedSessions = await supabaseRpc<AggregatedDailyRecord[]>('caipo_frequencia_sessoes_diarias', {
+          p_usuario_id: payload.userId,
+          p_time_zone: timeZone,
+        });
+      } catch (error) {
+        console.warn('Frequency daily aggregation RPC unavailable; using session query fallback:', error);
+      }
+
+      if (aggregatedSessions !== null) {
+        records = aggregatedSessions.filter((record): record is DailyRecord => record.data !== null);
+      } else {
+        const sessoes = await supabaseSelect<StudySession[]>('pomodoro_sessoes', {
+          select: 'created_at,duracao_real,duracao_planejada',
+          usuario_id: `eq.${payload.userId}`,
+          status: 'eq.concluida',
+          order: 'created_at.asc',
+        }) || [];
+        records = aggregateSessions(sessoes, timeZone);
+        if (sessoes.length === 0) {
+          records = await supabaseSelect<DailyRecord[]>('historico_diario', { select: 'data,tempo_total,sessoes_concluidas', usuario_id: `eq.${payload.userId}`, order: 'data.asc' }) || [];
         }
-        return accumulator;
-      }, []) : await supabaseSelect<DailyRecord[]>('historico_diario', { select: 'data,tempo_total,sessoes_concluidas', usuario_id: `eq.${payload.userId}`, order: 'data.asc' }) || [];
+      }
+
+      if (aggregatedSessions?.length === 0) {
+        records = await supabaseSelect<DailyRecord[]>('historico_diario', { select: 'data,tempo_total,sessoes_concluidas', usuario_id: `eq.${payload.userId}`, order: 'data.asc' }) || [];
+      }
       const cronogramasDoUsuario = await supabaseSelect<Array<{ id: string; dias_disponiveis?: number[] | null }>>('cronogramas', { select: 'id,dias_disponiveis', usuario_id: `eq.${payload.userId}`, order: 'updated_at.desc', limit: 1 }) || [];
       if (cronogramasDoUsuario[0]) {
         plannedDays = Array.isArray(cronogramasDoUsuario[0].dias_disponiveis) ? cronogramasDoUsuario[0].dias_disponiveis.map((day) => (day + 6) % 7) : [];
@@ -137,20 +172,20 @@ export async function GET(req: NextRequest) {
         plannedActivities = sessoesPlanejadas.filter((session) => session.tipo !== 'pausa').length;
       }
     } else if (isDatabaseConfigured && db) {
-      const sessoes: StudySession[] = await db.select({ created_at: pomodoro_sessoes.created_at, duracao_real: pomodoro_sessoes.duracao_real, duracao_planejada: pomodoro_sessoes.duracao_planejada, status: pomodoro_sessoes.status }).from(pomodoro_sessoes).where(and(eq(pomodoro_sessoes.usuario_id, payload.userId), eq(pomodoro_sessoes.status, 'concluida'))).orderBy(pomodoro_sessoes.created_at);
-      records = sessoes.length > 0 ? sessoes.reduce<DailyRecord[]>((accumulator, session: StudySession) => {
-        if (!session.created_at) return accumulator;
-        const data = localDateKey(session.created_at, timeZone);
-        const existing = accumulator.find((record) => record.data === data);
-        const duration = session.duracao_real || session.duracao_planejada || 0;
-        if (existing) {
-          existing.tempo_total = (existing.tempo_total || 0) + duration;
-          existing.sessoes_concluidas = (existing.sessoes_concluidas || 0) + 1;
-        } else {
-          accumulator.push({ data, tempo_total: duration, sessoes_concluidas: 1 });
-        }
-        return accumulator;
-      }, []) : await db.select({ data: historico_diario.data, tempo_total: historico_diario.tempo_total, sessoes_concluidas: historico_diario.sessoes_concluidas }).from(historico_diario).where(eq(historico_diario.usuario_id, payload.userId));
+      const serverTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const aggregatedSessions = await db.select({
+        data: sql<string | null>`to_char(((${pomodoro_sessoes.created_at} AT TIME ZONE ${serverTimeZone}) AT TIME ZONE ${timeZone})::date, 'YYYY-MM-DD')`,
+        tempo_total: sql<number>`SUM(COALESCE(NULLIF(${pomodoro_sessoes.duracao_real}, 0), ${pomodoro_sessoes.duracao_planejada}, 0))::float8`,
+        sessoes_concluidas: sql<number>`COUNT(*)::float8`,
+      }).from(pomodoro_sessoes)
+        .where(and(eq(pomodoro_sessoes.usuario_id, payload.userId), eq(pomodoro_sessoes.status, 'concluida')))
+        .groupBy(sql`1`)
+        .orderBy(sql`1`);
+      if (aggregatedSessions.length > 0) {
+        records = aggregatedSessions.filter((record: AggregatedDailyRecord): record is DailyRecord => record.data !== null);
+      } else {
+        records = await db.select({ data: historico_diario.data, tempo_total: historico_diario.tempo_total, sessoes_concluidas: historico_diario.sessoes_concluidas }).from(historico_diario).where(eq(historico_diario.usuario_id, payload.userId));
+      }
       const [cronograma] = await db.select({ id: cronogramas.id, dias_disponiveis: cronogramas.dias_disponiveis }).from(cronogramas).where(eq(cronogramas.usuario_id, payload.userId)).limit(1);
       if (cronograma) {
         const dias = Array.isArray(cronograma.dias_disponiveis) ? cronograma.dias_disponiveis as number[] : [];

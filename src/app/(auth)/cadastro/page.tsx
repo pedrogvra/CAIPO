@@ -84,13 +84,13 @@ export default function CadastroPage() {
         <h1 className="auth-form-title">Cadastre-se</h1>
 
         <div className="auth-form-field">
-          <label className="auth-form-label">Email</label>
+          <label className="auth-form-label">E-mail</label>
           <input
             className="auth-form-input"
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="Digite seu email"
+            placeholder="Digite seu e-mail"
           />
         </div>
 

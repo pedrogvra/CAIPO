@@ -8,6 +8,7 @@ import {
   jsonb,
   real,
   serial,
+  index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
@@ -70,17 +71,24 @@ export const materias = pgTable('materias', {
 });
 
 // ─── Pomodoro ─────────────────────────────────────────────────────────────────
-export const pomodoro_sessoes = pgTable('pomodoro_sessoes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
-  materia_id: uuid('materia_id').references(() => materias.id),
-  materia_nome: text('materia_nome'),
-  duracao_planejada: integer('duracao_planejada').notNull(), // em minutos
-  duracao_real: integer('duracao_real'),
-  status: text('status').default('andamento'), // 'concluida'|'interrompida'|'andamento'
-  motivo_pausa: text('motivo_pausa'),
-  created_at: timestamp('created_at').defaultNow(),
-});
+export const pomodoro_sessoes = pgTable(
+  'pomodoro_sessoes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
+    materia_id: uuid('materia_id').references(() => materias.id),
+    materia_nome: text('materia_nome'),
+    duracao_planejada: integer('duracao_planejada').notNull(), // em minutos
+    duracao_real: integer('duracao_real'),
+    status: text('status').default('andamento'), // 'concluida'|'interrompida'|'andamento'
+    motivo_pausa: text('motivo_pausa'),
+    created_at: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    frequenciaUsuarioStatusCreatedIdx: index('pomodoro_sessoes_usuario_status_created_idx')
+      .on(table.usuario_id, table.status, table.created_at),
+  }),
+);
 
 export const pomodoro_config = pgTable('pomodoro_config', {
   id: uuid('id').primaryKey().defaultRandom(),

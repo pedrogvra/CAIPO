@@ -96,7 +96,7 @@ function getNextDiagnosticoStep(estado: EstadoAtual): ConversationResponse {
   if (answeredCount < DIAGNOSTICO_PERGUNTAS.length) {
     const pergunta = DIAGNOSTICO_PERGUNTAS[answeredCount];
     const mensagem = answeredCount === 0
-      ? 'Show, já te conheço melhor agora! Só mais um pouquinho — algumas perguntas rápidas sobre como você estuda hoje, pra eu montar algo que realmente funcione pra você.\n\n' + pergunta.texto
+      ? 'Ótimo, já conheço você um pouco melhor! Só mais algumas perguntas rápidas sobre seus estudos para preparar um plano que funcione para você.\n\n' + pergunta.texto
       : pergunta.texto;
 
     return {

@@ -17,6 +17,25 @@ html, body {
   -ms-overflow-style: none;
 }
 
+html:has(.page-loading),
+body:has(.page-loading),
+body:has(.page-loading) .app-main {
+  overflow: hidden !important;
+}
+
+.page-loading {
+  position: fixed !important;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  touch-action: none;
+  z-index: 100;
+}
+
 body {
   min-height: 100vh;
   font-family: 'Poppins', sans-serif;
@@ -53,9 +72,27 @@ body::-webkit-scrollbar {
     min-width: 0;
   }
 
-  .app-main:has(.questionario-shell) {
-    padding: 0 !important;
-    overflow-x: hidden;
+  .app-main:has(.dashboard-page) {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .app-main:has(.dashboard-page)::-webkit-scrollbar {
+    display: none !important;
+    width: 0;
+    height: 0;
+  }
+
+  html:has(.dashboard-page),
+  body:has(.dashboard-page) {
+    overflow: hidden !important;
+  }
+
+    .app-main:has(.questionario-shell) {
+      padding: 0 !important;
+      overflow-x: hidden;
   }
 
   .questionario-shell {

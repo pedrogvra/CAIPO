@@ -56,18 +56,18 @@ export default function RecuperarSenhaPage() {
   return (
     <AuthLayout>
       <div className="auth-form">
-        <h1 className="auth-form-title">Esqueci a senha</h1>
+        <h1 className="auth-form-title">Recuperar senha</h1>
 
         {estado === 'formulario' ? (
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="auth-form-field">
-              <label className="auth-form-label">Email</label>
+              <label className="auth-form-label">E-mail</label>
               <input
                 className="auth-form-input"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Digite seu email"
+                placeholder="Digite seu e-mail"
               />
             </div>
 
@@ -82,11 +82,11 @@ export default function RecuperarSenhaPage() {
               disabled={loading}
               className="auth-form-button"
             >
-              {loading ? 'Enviando...' : 'Entrar'}
+              {loading ? 'Enviando...' : 'Enviar link de recuperação'}
             </button>
 
             <div className="auth-form-footer">
-              Lembrou a senha? <Link href="/login" className="auth-form-link">Faça Login</Link>
+              Lembra da sua senha? <Link href="/login" className="auth-form-link">Faça login</Link>
             </div>
           </form>
         ) : (
@@ -100,12 +100,12 @@ export default function RecuperarSenhaPage() {
               textShadow: '0px 4px 4px rgba(30, 85, 168, 1.00)',
               lineHeight: '36px',
             }}>
-              Observe sua caixa de email e altere sua senha!
+              Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.
             </div>
 
             <Link href="/login" className="auth-form-link" style={{ display: 'block', width: '100%' }}>
               <button className="auth-form-button" type="button">
-                Login
+                Voltar ao login
               </button>
             </Link>
 

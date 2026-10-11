@@ -21,11 +21,10 @@ const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { usuario, loading } = useAuth();
+  const { usuario, loading, questionarioStatus, refreshQuestionario } = useAuth();
   const [ofensiva, setOfensiva] = useState<OfensivaData>({ streak_atual: 0, maior_streak: 0, frequencia_ativa: false });
   const [cronograma, setCronograma] = useState<CronogramaData | null>(null);
   const [pomConfig, setPomConfig] = useState<PomodoroConfigData>({ tempo_foco: 25 });
-  const [questionarioPendente, setQuestionarioPendente] = useState(true);
 
   useEffect(() => {
     if (!loading && !usuario) router.push('/login');
@@ -33,22 +32,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!usuario) return;
-    fetch('/api/ofensiva').then(r => r.json()).then(d => {
-      if (d.streak_atual !== undefined) setOfensiva(d);
-    });
-    fetch('/api/cronograma').then(r => r.json()).then(d => {
-      if (d.cronograma) setCronograma(d.cronograma);
-    });
-    fetch('/api/pomodoro/config').then(r => r.json()).then(d => {
-      if (d.config) setPomConfig(d.config);
-    });
-    fetch('/api/questionario/progresso').then(r => r.json()).then(d => {
-      setQuestionarioPendente(d.progresso?.concluido !== true);
-    }).catch(() => setQuestionarioPendente(true));
+    fetch('/api/dashboard/summary').then(r => r.json()).then(d => {
+      if (d.ofensiva?.streak_atual !== undefined) setOfensiva(d.ofensiva);
+      if (d.cronograma?.cronograma) setCronograma(d.cronograma.cronograma);
+      if (d.config?.config) setPomConfig(d.config.config);
+    }).catch((error) => console.error('Erro ao carregar dados do dashboard:', error));
   }, [usuario]);
 
   if (loading || !usuario) return (
-    <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
     </div>
   );
@@ -153,14 +145,13 @@ export default function DashboardPage() {
           onClick={() => router.push('/cronograma')}
           >
             <div style={{ color: '#FFDE68', fontSize: 24, fontWeight: 600, marginBottom: 8 }}>
-              Último cronograma feito
+              Seu último cronograma
             </div>
             <div style={{
               background: 'white',
               borderRadius: 12,
               padding: 12,
               minHeight: 120,
-              overflow: 'auto',
             }}>
               {cronograma ? (
                 <div>
@@ -211,9 +202,14 @@ export default function DashboardPage() {
           justifyContent: 'space-between',
         }}>
           <div>
-            {questionarioPendente && (
+            {questionarioStatus === 'pendente' && (
               <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 16, background: '#091541', color: '#FFDE68', fontWeight: 600 }}>
-                Conclua o questionário inicial para liberar o cronograma e o Pomodoro. <button onClick={() => router.push('/questionario')} style={{ marginLeft: 8, color: '#FFFFFF', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>Abrir questionário</button>
+                Responda ao questionário inicial para liberar o cronograma e o Pomodoro. <button onClick={() => router.push('/questionario')} style={{ marginLeft: 8, color: '#FFFFFF', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>Abrir questionário</button>
+              </div>
+            )}
+            {questionarioStatus === 'erro' && (
+              <div role="alert" style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 16, background: '#091541', color: '#FFDE68', fontWeight: 600 }}>
+                Não foi possível verificar o questionário. <button onClick={() => void refreshQuestionario()} style={{ marginLeft: 8, color: '#FFFFFF', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>Tentar novamente</button>
               </div>
             )}
             <div style={{ color: '#091541', fontSize: 24, fontWeight: 600 }}>Pomodoro</div>

@@ -164,7 +164,7 @@ export default function FrequenciaPage() {
 
   if (loading || !usuario)
     return (
-      <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
       </div>
     );
@@ -378,7 +378,7 @@ export default function FrequenciaPage() {
                 }}
               >
                 <div style={{ color: 'white', fontSize: 16, fontWeight: 600, lineHeight: '24px', fontFamily: 'Poppins' }}>
-                  Sua frequência será ativada após você concluir o primeiro Pomodoro do dia (modo Foco completo).
+                  Sua frequência será ativada quando você concluir uma sessão completa no modo Foco.
                 </div>
                 <button
                   type="button"
@@ -401,7 +401,7 @@ export default function FrequenciaPage() {
             )}
 
             <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 16, fontWeight: 600, marginBottom: 20, fontFamily: 'Poppins' }}>
-              Maior sequência de dias: {ofensiva.maior_streak}
+              Maior sequência de estudos: {ofensiva.maior_streak}
             </div>
 
             <div
@@ -582,7 +582,7 @@ export default function FrequenciaPage() {
                     <Image src={caipoBoneco} alt="Caipo" width={30} height={30} style={{ objectFit: 'contain', flexShrink: 0 }} />
                     {frequenciaData.streak.current > 0
                       ? 'Você está construindo uma ótima sequência! Continue assim, um dia de cada vez.'
-                      : 'Tudo bem! Uma pausa não apaga tudo o que você já conquistou. Vamos começar uma nova sequência?'}
+                      : 'Tudo bem! Uma pausa não apaga suas conquistas. Que tal começar uma nova sequência?'}
                   </span>
                 </div>
               </div>

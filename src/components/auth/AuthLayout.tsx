@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import authBackground from '../../../assets/Caipo fundo.svg';
 import caipoLogo from '../../../assets/Caipo logo.svg';
 import caipoMascot from '../../../assets/Caipo boneco.svg';
@@ -75,22 +76,28 @@ export default function AuthLayout({ children, showMascot = true }: AuthLayoutPr
         </div>
       </div>
 
-      <div className="auth-right-panel" style={{
-        position: 'relative',
-        right: 0,
-        top: 0,
-        width: 'min(100%, 48%)',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1,
-        padding: '24px clamp(16px, 4vw, 40px)',
-      }}>
+      <motion.div
+        className="auth-right-panel"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        style={{
+          position: 'relative',
+          right: 0,
+          top: 0,
+          width: 'min(100%, 48%)',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1,
+          padding: '24px clamp(16px, 4vw, 40px)',
+        }}
+      >
         <div className="auth-form-card" style={{ width: '100%', maxWidth: 420, marginLeft: 'clamp(12px, 4vw, 72px)' }}>
           {children}
         </div>
-      </div>
+      </motion.div>
 
       <style jsx global>{`
         .auth-side-illustration {

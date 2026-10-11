@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
 import caipoLogo from '../../../assets/Caipo logo.svg';
@@ -49,8 +50,8 @@ export default function Sidebar({ activeItem }: SidebarProps) {
   const navItem = (key: string, label: string, path: string, icon: React.ReactNode) => {
     const isActive = current === key;
     return (
-      <div
-        onClick={() => router.push(path)}
+      <Link
+        href={path}
         style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '8px 10px',
@@ -59,13 +60,15 @@ export default function Sidebar({ activeItem }: SidebarProps) {
           background: isActive ? 'rgba(83,149,207,0.50)' : 'transparent',
           minHeight: 48,
           width: '100%',
+          color: 'inherit',
+          textDecoration: 'none',
         }}
       >
         {icon}
         <span style={{ color: 'white', fontSize: 16, fontFamily: 'Poppins', fontWeight: 600, lineHeight: '18px' }}>
           {label}
         </span>
-      </div>
+      </Link>
     );
   };
 
