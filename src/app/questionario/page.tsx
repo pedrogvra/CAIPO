@@ -222,12 +222,12 @@ export default function QuestionarioPage() {
     }
   }, [usuario, loading, loadingState, router]);
 
-  const saveProgress = async (ultimaPerguntaId: string | null, estado: EstadoAtual, concluido = false) => {
+  const saveProgress = async (estado: EstadoAtual, concluido = false) => {
     const response = await fetch('/api/questionario/progresso', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ultima_pergunta_id: ultimaPerguntaId,
+        ultima_pergunta_id: null,
         pontuacao_atual: calcularPontuacao(estado.diagnostico_inicial?.respostas || {}),
         concluido,
         respostas_json: estado,
@@ -271,7 +271,7 @@ export default function QuestionarioPage() {
       const nextConversation = await fetchConversation(nextState);
       const concluded = nextConversation.etapa === 'feedback_pendente' || nextConversation.etapa === 'finalizado';
 
-      await saveProgress(nextConversation.etapa, nextState, concluded);
+      await saveProgress(nextState, concluded);
       setEstadoAtual(nextState);
       setConversation(nextConversation);
       setSelectedOptions([]);
@@ -294,7 +294,7 @@ export default function QuestionarioPage() {
     setApiError(null);
 
     try {
-      await saveProgress(conversation?.etapa ?? null, { ...estadoAtual, salvo_para_depois: true }, false);
+      await saveProgress({ ...estadoAtual, salvo_para_depois: true });
       router.push('/dashboard');
     } catch (err) {
       console.error('Erro ao salvar para continuar depois:', err);

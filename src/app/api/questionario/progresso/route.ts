@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     const { isConfigured } = getSupabaseConnectionStatus();
     if (!isConfigured) {
       const progresso = saveStoredProgress(payload.userId, {
-        ultima_pergunta_id: body.ultima_pergunta_id ?? null,
+        ultima_pergunta_id: null,
         pontuacao_atual: body.pontuacao_atual || 0,
         concluido,
         respostas_json,
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     try {
       await supabaseInsert('questionario_progresso', {
         usuario_id: payload.userId,
-        ultima_pergunta_id: body.ultima_pergunta_id,
+        ultima_pergunta_id: null,
         pontuacao_atual: body.pontuacao_atual || 0,
         concluido,
         respostas_json,
