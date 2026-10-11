@@ -7,9 +7,13 @@ import HeaderUsuario from '@/components/layout/HeaderUsuario';
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
-  const { usuario, loading } = useAuth();
+  const { usuario, loading, atualizarNome } = useAuth();
   const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [refazendo, setRefazendo] = useState(false);
+  const [nome, setNome] = useState<string | null>(null);
+  const [salvandoNome, setSalvandoNome] = useState(false);
+  const [mensagemNome, setMensagemNome] = useState('');
+  const [erroNome, setErroNome] = useState('');
 
   useEffect(() => {
     if (!loading && !usuario) router.push('/login');
@@ -24,6 +28,22 @@ export default function ConfiguracoesPage() {
       setRefazendo(false);
       setMostrarConfirmacao(false);
     }
+  };
+
+  const salvarNome = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSalvandoNome(true);
+    setMensagemNome('');
+    setErroNome('');
+
+    const nomeAtualizado = nome ?? usuario?.nome ?? '';
+    const resultado = await atualizarNome(nomeAtualizado);
+    if (resultado.error) {
+      setErroNome(resultado.error);
+    } else {
+      setMensagemNome('Nome atualizado com sucesso.');
+    }
+    setSalvandoNome(false);
   };
 
   if (loading || !usuario) return (
@@ -57,8 +77,36 @@ export default function ConfiguracoesPage() {
           <div style={{ marginBottom: 32 }}>
             <h2 style={{ color: 'white', fontSize: 22, fontWeight: 600, marginBottom: 16 }}>Perfil</h2>
             <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: 20 }}>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Nome</div>
-              <div style={{ color: 'white', fontSize: 20, fontWeight: 600 }}>{usuario.nome}</div>
+              <form onSubmit={salvarNome}>
+                <label htmlFor="nome-perfil" style={{ display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 600, marginBottom: 6 }}>
+                  Nome
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                  <input
+                    id="nome-perfil"
+                    type="text"
+                    value={nome ?? usuario.nome}
+                    onChange={(event) => {
+                      setNome(event.target.value);
+                      setMensagemNome('');
+                      setErroNome('');
+                    }}
+                    maxLength={100}
+                    required
+                    aria-describedby={erroNome ? 'nome-perfil-erro' : mensagemNome ? 'nome-perfil-sucesso' : undefined}
+                    style={{ flex: '1 1 220px', minWidth: 0, padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.3)', background: 'white', color: '#091541', fontSize: 16, fontWeight: 600 }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={salvandoNome || !(nome ?? usuario.nome).trim() || (nome ?? usuario.nome).trim() === usuario.nome}
+                    style={{ padding: '12px 20px', borderRadius: 10, border: 0, background: '#FFDE68', color: '#091541', fontSize: 15, fontWeight: 700, cursor: salvandoNome || !(nome ?? usuario.nome).trim() || (nome ?? usuario.nome).trim() === usuario.nome ? 'not-allowed' : 'pointer', opacity: salvandoNome || !(nome ?? usuario.nome).trim() || (nome ?? usuario.nome).trim() === usuario.nome ? 0.65 : 1 }}
+                  >
+                    {salvandoNome ? 'Salvando...' : 'Salvar nome'}
+                  </button>
+                </div>
+                {erroNome && <p id="nome-perfil-erro" role="alert" style={{ color: '#fecaca', fontWeight: 600, marginTop: 10 }}>{erroNome}</p>}
+                {mensagemNome && <p id="nome-perfil-sucesso" role="status" style={{ color: '#bbf7d0', fontWeight: 600, marginTop: 10 }}>{mensagemNome}</p>}
+              </form>
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 600, marginTop: 16, marginBottom: 6 }}>Email</div>
               <div style={{ color: 'white', fontSize: 20, fontWeight: 600 }}>{usuario.email}</div>
             </div>

@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, senha: string) => Promise<{ error?: string; primeiro_acesso?: boolean }>;
   cadastro: (email: string, nome: string, senha: string, confirmar_senha: string) => Promise<{ error?: string }>;
+  atualizarNome: (nome: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   refreshUsuario: () => Promise<void>;
 }
@@ -60,13 +61,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return {};
   };
 
+  const atualizarNome = async (nome: string) => {
+    const res = await fetch('/api/usuario/perfil', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error };
+
+    setUsuario((current) => current ? { ...current, nome: data.usuario.nome } : current);
+    return {};
+  };
+
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     setUsuario(null);
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, loading, login, cadastro, logout, refreshUsuario }}>
+    <AuthContext.Provider value={{ usuario, loading, login, cadastro, atualizarNome, logout, refreshUsuario }}>
       {children}
     </AuthContext.Provider>
   );
