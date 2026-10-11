@@ -100,16 +100,8 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({ success: true });
     } catch (err) {
-      console.warn('Supabase questionario insert fallback:', err);
-      const progresso = saveStoredProgress(payload.userId, {
-        ultima_pergunta_id: body.ultima_pergunta_id ?? null,
-        pontuacao_atual: body.pontuacao_atual || 0,
-        concluido: body.concluido || false,
-        respostas_json: body.respostas_json || {},
-        updated_at: new Date().toISOString(),
-      });
-
-      return NextResponse.json({ success: true, progresso, fallback: true });
+      console.error('Supabase questionario upsert error:', err);
+      return NextResponse.json({ error: 'Não foi possível salvar o progresso do questionário.' }, { status: 500 });
     }
   } catch (err) {
     console.error('Progresso POST error:', err);

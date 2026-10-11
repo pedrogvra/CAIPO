@@ -28,7 +28,7 @@ function buildQueryString(params: SupabaseQueryParams = {}) {
   return searchParams.toString();
 }
 
-function getHeaders({ preferReturnRepresentation = false, contentType = true } = {}) {
+function getHeaders({ preferReturnRepresentation = false, mergeDuplicates = false, contentType = true } = {}) {
   const { key } = getSupabaseConfig();
 
   const headers: Record<string, string> = {
@@ -37,12 +37,16 @@ function getHeaders({ preferReturnRepresentation = false, contentType = true } =
     Accept: 'application/json',
   };
 
-  if (contentType) {
-    headers['Content-Type'] = 'application/json';
+  const preferences = [
+    ...(mergeDuplicates ? ['resolution=merge-duplicates'] : []),
+    ...(preferReturnRepresentation ? ['return=representation'] : []),
+  ];
+  if (preferences.length > 0) {
+    headers['Prefer'] = preferences.join(',');
   }
 
-  if (preferReturnRepresentation) {
-    headers['Prefer'] = 'return=representation';
+  if (contentType) {
+    headers['Content-Type'] = 'application/json';
   }
 
   return headers;
@@ -63,6 +67,7 @@ async function request<T>(table: string, init: RequestInit, params: SupabaseQuer
     headers: {
       ...getHeaders({
         preferReturnRepresentation: init.method === 'POST' || init.method === 'PATCH' || init.method === 'PUT',
+        mergeDuplicates: init.method === 'POST' && params.on_conflict !== undefined,
         contentType: init.method !== 'GET' && init.method !== 'DELETE',
       }),
       ...(init.headers || {}),
