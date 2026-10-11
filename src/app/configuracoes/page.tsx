@@ -11,6 +11,7 @@ export default function ConfiguracoesPage() {
   const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [refazendo, setRefazendo] = useState(false);
   const [nome, setNome] = useState<string | null>(null);
+  const [nomeEmFoco, setNomeEmFoco] = useState(false);
   const [salvandoNome, setSalvandoNome] = useState(false);
   const [mensagemNome, setMensagemNome] = useState('');
   const [erroNome, setErroNome] = useState('');
@@ -91,10 +92,12 @@ export default function ConfiguracoesPage() {
                       setMensagemNome('');
                       setErroNome('');
                     }}
+                    onFocus={() => setNomeEmFoco(true)}
+                    onBlur={() => setNomeEmFoco(false)}
                     maxLength={100}
                     required
                     aria-describedby={erroNome ? 'nome-perfil-erro' : mensagemNome ? 'nome-perfil-sucesso' : undefined}
-                    style={{ flex: '1 1 220px', minWidth: 0, padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.3)', background: 'white', color: '#091541', fontSize: 16, fontWeight: 600 }}
+                    style={{ flex: '1 1 220px', minWidth: 0, padding: '12px 14px', borderRadius: 10, border: nomeEmFoco ? '1px solid transparent' : '1px solid rgba(255,255,255,0.3)', outline: 'none', boxShadow: 'none', background: 'white', color: '#091541', fontSize: 16, fontWeight: 600 }}
                   />
                   <button
                     type="submit"
