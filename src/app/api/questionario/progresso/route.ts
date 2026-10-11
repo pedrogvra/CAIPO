@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
-import { getSupabaseConnectionStatus, supabaseSelect, supabaseInsert, supabaseDelete } from '@/lib/supabase-data';
+import { getSupabaseConnectionStatus, supabaseSelect, supabaseInsert, supabaseUpdate, supabaseDelete } from '@/lib/supabase-data';
 
 type ProgressoFallback = {
   usuario_id: string;
@@ -10,6 +10,28 @@ type ProgressoFallback = {
   respostas_json: Record<string, unknown>;
   updated_at: string;
 };
+
+function normalizarProgresso(progresso: ProgressoFallback): ProgressoFallback {
+  const respostas = progresso.respostas_json as {
+    salvo_para_depois?: boolean;
+    diagnostico_inicial?: { respostas?: Record<string, unknown> };
+  };
+  const concluido = progresso.concluido
+    || Object.keys(respostas?.diagnostico_inicial?.respostas || {}).length >= 10;
+
+  const precisaNormalizar = (!progresso.concluido && concluido)
+    || (concluido && Boolean(respostas?.salvo_para_depois));
+  if (!precisaNormalizar) return progresso;
+
+  const respostasNormalizadas = { ...respostas };
+  if (concluido) delete respostasNormalizadas.salvo_para_depois;
+
+  return {
+    ...progresso,
+    concluido,
+    respostas_json: respostasNormalizadas,
+  };
+}
 
 const globalForQuestionarioProgress = globalThis as typeof globalThis & {
   __caipoQuestionarioProgress?: Map<string, ProgressoFallback>;
@@ -44,7 +66,11 @@ export async function GET(req: NextRequest) {
 
     const { isConfigured } = getSupabaseConnectionStatus();
     if (!isConfigured) {
-      return NextResponse.json({ progresso: getStoredProgress(payload.userId) || null });
+      const progresso = getStoredProgress(payload.userId);
+      if (!progresso) return NextResponse.json({ progresso: null });
+      const normalizado = normalizarProgresso(progresso);
+      questionarioProgressStore.set(payload.userId, normalizado);
+      return NextResponse.json({ progresso: normalizado });
     }
 
     try {
@@ -53,7 +79,19 @@ export async function GET(req: NextRequest) {
         usuario_id: `eq.${payload.userId}`,
       });
 
-      return NextResponse.json({ progresso: progresso?.[0] || getStoredProgress(payload.userId) || null });
+      const registro = progresso?.[0] as ProgressoFallback | undefined;
+      if (!registro) return NextResponse.json({ progresso: getStoredProgress(payload.userId) || null });
+
+      const normalizado = normalizarProgresso(registro);
+      if (normalizado !== registro) {
+        await supabaseUpdate('questionario_progresso', {
+          concluido: normalizado.concluido,
+          respostas_json: normalizado.respostas_json,
+          updated_at: new Date().toISOString(),
+        }, { usuario_id: `eq.${payload.userId}` });
+      }
+
+      return NextResponse.json({ progresso: normalizado });
     } catch (err) {
       console.warn('Supabase questionario select fallback:', err);
       return NextResponse.json({ progresso: getStoredProgress(payload.userId) || null });
@@ -72,13 +110,18 @@ export async function POST(req: NextRequest) {
     if (!payload) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
 
     const body = await req.json();
+    const respostas_json = body.respostas_json || {};
+    const concluido = body.concluido === true
+      || Object.keys(respostas_json?.diagnostico_inicial?.respostas || {}).length >= 10;
+    if (concluido) delete respostas_json.salvo_para_depois;
+
     const { isConfigured } = getSupabaseConnectionStatus();
     if (!isConfigured) {
       const progresso = saveStoredProgress(payload.userId, {
         ultima_pergunta_id: body.ultima_pergunta_id ?? null,
         pontuacao_atual: body.pontuacao_atual || 0,
-        concluido: body.concluido || false,
-        respostas_json: body.respostas_json || {},
+        concluido,
+        respostas_json,
         updated_at: new Date().toISOString(),
       });
 
@@ -90,8 +133,8 @@ export async function POST(req: NextRequest) {
         usuario_id: payload.userId,
         ultima_pergunta_id: body.ultima_pergunta_id,
         pontuacao_atual: body.pontuacao_atual || 0,
-        concluido: body.concluido || false,
-        respostas_json: body.respostas_json || {},
+        concluido,
+        respostas_json,
         updated_at: new Date().toISOString(),
       }, {
         on_conflict: 'usuario_id',

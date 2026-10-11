@@ -269,7 +269,7 @@ export default function QuestionarioPage() {
         delete nextState.salvo_para_depois;
       }
       const nextConversation = await fetchConversation(nextState);
-      const concluded = nextConversation.etapa === 'finalizado';
+      const concluded = nextConversation.etapa === 'feedback_pendente' || nextConversation.etapa === 'finalizado';
 
       await saveProgress(nextConversation.etapa, nextState, concluded);
       setEstadoAtual(nextState);
@@ -277,10 +277,6 @@ export default function QuestionarioPage() {
       setSelectedOptions([]);
       setTextInput('');
       setNumberInput('');
-
-      if (nextConversation.etapa === 'feedback_pendente') {
-        return;
-      }
 
       if (concluded) {
         router.push('/feedback');

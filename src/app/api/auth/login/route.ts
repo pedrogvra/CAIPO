@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createToken } from '@/lib/auth';
-import { getSupabaseConnectionStatus, supabaseSelect } from '@/lib/supabase-data';
+import { getSupabaseConnectionStatus, supabaseSelect, supabaseUpdate } from '@/lib/supabase-data';
+import { questionarioConcluido } from '@/lib/questionario-access';
 
 export async function POST(req: NextRequest) {
   try {
@@ -53,6 +54,11 @@ export async function POST(req: NextRequest) {
       if (usuarios?.[0]) {
         primeiroAcesso = usuarios[0].primeiro_acesso;
         nomeUsuario = usuarios[0].nome?.trim() || nomeUsuario;
+      }
+
+      if (primeiroAcesso && await questionarioConcluido(user.id)) {
+        await supabaseUpdate('usuarios', { primeiro_acesso: false }, { id: `eq.${user.id}` });
+        primeiroAcesso = false;
       }
     }
 
