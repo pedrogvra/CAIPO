@@ -7,6 +7,8 @@ import {
   uuid,
   jsonb,
   real,
+  serial,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 // ─── Usuários ─────────────────────────────────────────────────────────────────
@@ -19,45 +21,6 @@ export const usuarios = pgTable('usuarios', {
   serie: text('serie'),
   objetivo: text('objetivo'),
   primeiro_acesso: boolean('primeiro_acesso').default(true),
-  created_at: timestamp('created_at').defaultNow(),
-});
-
-// ─── Sessões de autenticação ───────────────────────────────────────────────────
-export const sessoes = pgTable('sessoes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
-  token: text('token').notNull().unique(),
-  expires_at: timestamp('expires_at').notNull(),
-  created_at: timestamp('created_at').defaultNow(),
-});
-
-// ─── Questionário ─────────────────────────────────────────────────────────────
-export const questionario_perguntas = pgTable('questionario_perguntas', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  texto: text('texto').notNull(),
-  mensagem_caipo: text('mensagem_caipo'),
-  tipo: text('tipo').notNull(), // 'unica' | 'multipla' | 'numero' | 'texto'
-  etapa: integer('etapa').notNull(),
-  ordem: integer('ordem').notNull(),
-  created_at: timestamp('created_at').defaultNow(),
-});
-
-export const questionario_opcoes = pgTable('questionario_opcoes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  pergunta_id: uuid('pergunta_id').notNull().references(() => questionario_perguntas.id, { onDelete: 'cascade' }),
-  texto: text('texto').notNull(),
-  peso: integer('peso').default(0),
-  proxima_pergunta_id: uuid('proxima_pergunta_id'),
-  created_at: timestamp('created_at').defaultNow(),
-});
-
-export const questionario_respostas = pgTable('questionario_respostas', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
-  pergunta_id: uuid('pergunta_id').notNull().references(() => questionario_perguntas.id),
-  opcao_ids: jsonb('opcao_ids'), // array of option ids for multiple
-  resposta_texto: text('resposta_texto'),
-  pontuacao: integer('pontuacao').default(0),
   created_at: timestamp('created_at').defaultNow(),
 });
 
@@ -94,16 +57,6 @@ export const cronograma_sessoes = pgTable('cronograma_sessoes', {
   horario_inicio: text('horario_inicio').notNull(),
   horario_fim: text('horario_fim').notNull(),
   tipo: text('tipo').default('estudo'), // 'estudo'|'revisao'|'pausa'
-  created_at: timestamp('created_at').defaultNow(),
-});
-
-export const atividades_fixas = pgTable('atividades_fixas', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
-  nome: text('nome').notNull(),
-  dias_semana: jsonb('dias_semana').notNull(), // array of 0-6
-  horario_inicio: text('horario_inicio').notNull(),
-  horario_fim: text('horario_fim').notNull(),
   created_at: timestamp('created_at').defaultNow(),
 });
 
@@ -161,26 +114,6 @@ export const historico_diario = pgTable('historico_diario', {
   created_at: timestamp('created_at').defaultNow(),
 });
 
-// ─── Configurações ────────────────────────────────────────────────────────────
-export const configuracoes = pgTable('configuracoes', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  usuario_id: uuid('usuario_id').notNull().unique().references(() => usuarios.id, { onDelete: 'cascade' }),
-  tema: text('tema').default('dark'),
-  notificacoes: boolean('notificacoes').default(true),
-  updated_at: timestamp('updated_at').defaultNow(),
-});
-
-export const preferencias_sistema = pgTable('preferencias_sistema', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  chave: text('chave').notNull().unique(),
-  valor: jsonb('valor'),
-  tipo: text('tipo').default('string'),
-  descricao: text('descricao'),
-  ativo: boolean('ativo').default(true),
-  created_at: timestamp('created_at').defaultNow(),
-  updated_at: timestamp('updated_at').defaultNow(),
-});
-
 export const conversas_caipo = pgTable('conversas_caipo', {
   id: uuid('id').primaryKey().defaultRandom(),
   usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
@@ -190,3 +123,38 @@ export const conversas_caipo = pgTable('conversas_caipo', {
   created_at: timestamp('created_at').defaultNow(),
   updated_at: timestamp('updated_at').defaultNow(),
 });
+
+export const frequencia_perguntas = pgTable('frequencia_perguntas', {
+  id: serial('id').primaryKey(),
+  categoria: text('categoria').notNull(),
+  pilar_id: integer('pilar_id').notNull(),
+  pergunta: text('pergunta').notNull(),
+  opcoes: jsonb('opcoes').notNull(),
+  respostas_caipo: jsonb('respostas_caipo').notNull(),
+});
+
+export const frequencia_historico = pgTable('frequencia_historico', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
+  pergunta_id: integer('pergunta_id').notNull(),
+  opcao_indice: integer('opcao_indice').notNull(),
+  resposta_usuario: text('resposta_usuario').notNull(),
+  data: text('data').notNull(),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+export const frequencia_perguntas_usadas = pgTable(
+  'frequencia_perguntas_usadas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    usuario_id: uuid('usuario_id').notNull().references(() => usuarios.id, { onDelete: 'cascade' }),
+    pergunta_id: integer('pergunta_id').notNull(),
+    created_at: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    usuarioPerguntaUnique: uniqueIndex('frequencia_perguntas_usadas_usuario_pergunta_unique').on(
+      table.usuario_id,
+      table.pergunta_id,
+    ),
+  }),
+);
