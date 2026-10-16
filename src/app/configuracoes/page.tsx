@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import HeaderUsuario from '@/components/layout/HeaderUsuario';
+import { MAX_CARACTERES_NOME, contarCaracteresNome, validarNome } from '@/lib/validacaoNome';
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -39,6 +40,13 @@ export default function ConfiguracoesPage() {
     setErroNome('');
 
     const nomeAtualizado = nome ?? usuario?.nome ?? '';
+    const erroValidacaoNome = validarNome(nomeAtualizado);
+    if (erroValidacaoNome) {
+      setErroNome(erroValidacaoNome);
+      setSalvandoNome(false);
+      return;
+    }
+
     const resultado = await atualizarNome(nomeAtualizado);
     if (resultado.error) {
       setErroNome(resultado.error);
@@ -91,11 +99,11 @@ export default function ConfiguracoesPage() {
                     onChange={(event) => {
                       setNome(event.target.value);
                       setMensagemNome('');
-                      setErroNome('');
+                      const erroValidacao = event.target.value.trim() ? validarNome(event.target.value) : null;
+                      setErroNome(erroValidacao ?? '');
                     }}
                     onFocus={() => setNomeEmFoco(true)}
                     onBlur={() => setNomeEmFoco(false)}
-                    maxLength={100}
                     required
                     aria-describedby={erroNome ? 'nome-perfil-erro' : mensagemNome ? 'nome-perfil-sucesso' : undefined}
                     style={{ flex: '1 1 220px', minWidth: 0, padding: '12px 14px', borderRadius: 10, border: nomeEmFoco ? '1px solid transparent' : '1px solid rgba(255,255,255,0.3)', outline: 'none', boxShadow: 'none', background: 'white', color: '#091541', fontSize: 16, fontWeight: 600 }}
@@ -108,8 +116,15 @@ export default function ConfiguracoesPage() {
                     {salvandoNome ? 'Salvando...' : 'Salvar nome'}
                   </button>
                 </div>
-                {erroNome && <p id="nome-perfil-erro" role="alert" style={{ color: '#fecaca', fontWeight: 600, marginTop: 10 }}>{erroNome}</p>}
-                {mensagemNome && <p id="nome-perfil-sucesso" role="status" style={{ color: '#bbf7d0', fontWeight: 600, marginTop: 10 }}>{mensagemNome}</p>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 6 }}>
+                  <div>
+                    {mensagemNome && <p id="nome-perfil-sucesso" role="status" style={{ color: '#bbf7d0', fontSize: 12, fontWeight: 600 }}>{mensagemNome}</p>}
+                    {erroNome && <p id="nome-perfil-erro" role="alert" style={{ color: '#fecaca', fontSize: 12, fontWeight: 600 }}>{erroNome}</p>}
+                  </div>
+                  <p style={{ flexShrink: 0, color: validarNome(nome ?? usuario.nome) ? '#fecaca' : 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, textAlign: 'right' }}>
+                    {contarCaracteresNome(nome ?? usuario.nome)}/{MAX_CARACTERES_NOME}
+                  </p>
+                </div>
               </form>
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 600, marginTop: 16, marginBottom: 6 }}>E-mail</div>
               <div style={{ color: 'white', fontSize: 20, fontWeight: 600 }}>{usuario.email}</div>

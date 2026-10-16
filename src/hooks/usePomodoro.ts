@@ -11,6 +11,7 @@ interface UsePomodoroProps {
   sessoesAntesPausaLonga: number;
   onSessaoConcluida?: (duracao: number) => void;
   onSessaoInterrompida?: (duracao: number, motivo: string) => void;
+  onPausaConcluida?: () => boolean;
 }
 
 interface UsePomodoroReturn {
@@ -36,6 +37,7 @@ export function usePomodoro({
   sessoesAntesPausaLonga,
   onSessaoConcluida,
   onSessaoInterrompida,
+  onPausaConcluida,
 }: UsePomodoroProps): UsePomodoroReturn {
   const [estado, setEstado] = useState<PomodoroEstado>('idle');
   const [tempoRestante, setTempoRestante] = useState(tempoFoco * 60);
@@ -132,11 +134,19 @@ export function usePomodoro({
           iniciarTimer(tempoPausaCurta * 60);
         }
       } else {
-        setEstado('focus');
-        iniciarTimer(tempoFoco * 60);
+        if (onPausaConcluida?.() === false) {
+          setEstado('idle');
+          setIniciado(false);
+          setPausado(false);
+          setTempoRestante(tempoFoco * 60);
+          setSessaoAtual(1);
+        } else {
+          setEstado('focus');
+          iniciarTimer(tempoFoco * 60);
+        }
       }
     }
-  }, [tempoRestante, iniciado, pausado, estado, sessaoAtual, sessoesAntesPausaLonga, tempoFoco, tempoPausaCurta, tempoPausaLonga, iniciarTimer, onSessaoConcluida]);
+  }, [tempoRestante, iniciado, pausado, estado, sessaoAtual, sessoesAntesPausaLonga, tempoFoco, tempoPausaCurta, tempoPausaLonga, iniciarTimer, onSessaoConcluida, onPausaConcluida]);
 
   useEffect(() => {
     return () => {
@@ -147,11 +157,17 @@ export function usePomodoro({
 
   const iniciar = useCallback(() => {
     void obterAudioContext()?.resume();
-    setEstado('focus');
+    const modoInicial = estado === 'idle' ? 'focus' : estado;
+    const duracaoInicial = modoInicial === 'focus'
+      ? tempoFoco * 60
+      : modoInicial === 'pausa_curta'
+        ? tempoPausaCurta * 60
+        : tempoPausaLonga * 60;
+    setEstado(modoInicial);
     setIniciado(true);
     setPausado(false);
-    iniciarTimer(tempoFoco * 60);
-  }, [tempoFoco, iniciarTimer]);
+    iniciarTimer(duracaoInicial);
+  }, [estado, tempoFoco, tempoPausaCurta, tempoPausaLonga, iniciarTimer]);
 
   const definirModo = useCallback((modo: PomodoroEstado) => {
     clearTimer();

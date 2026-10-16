@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import authBackground from '../../../assets/Caipo fundo.svg';
@@ -8,10 +10,16 @@ import caipoMascot from '../../../assets/Caipo boneco.svg';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
-  showMascot?: boolean;
 }
 
-export default function AuthLayout({ children, showMascot = true }: AuthLayoutProps) {
+export default function AuthLayout({ children }: AuthLayoutProps) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const main = document.querySelector('.app-main');
+    if (main) main.scrollTop = 0;
+  }, [pathname]);
+
   return (
     <div className="auth-shell" style={{
       width: '100%',
@@ -57,21 +65,17 @@ export default function AuthLayout({ children, showMascot = true }: AuthLayoutPr
             style={{ objectFit: 'contain', display: 'block' }}
           />
         </div>
-
-        {showMascot && (
-          <div className="auth-mascot" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: 10, marginBottom: 24, minHeight: 230 }}>
-            <Image
-              src={caipoMascot}
-              alt="Caipo mascote"
-              width={240}
-              height={240}
-              priority
-              style={{ objectFit: 'contain', display: 'block' }}
-            />
-          </div>
-        )}
-
-        <div style={{ color: 'white', fontSize: 'clamp(18px, 2vw, 28px)', fontFamily: 'Poppins', fontWeight: 700, textAlign: 'center', lineHeight: '30px', marginTop: 4 }}>
+        <div className="auth-mascot">
+          <Image
+            src={caipoMascot}
+            alt="Caipo mascote"
+            width={240}
+            height={240}
+            priority
+            style={{ objectFit: 'contain', display: 'block', width: 240, height: 240 }}
+          />
+        </div>
+        <div className="auth-tagline">
           Planeje hoje. Conquiste amanhã
         </div>
       </div>
@@ -100,6 +104,21 @@ export default function AuthLayout({ children, showMascot = true }: AuthLayoutPr
       </motion.div>
 
       <style jsx global>{`
+        .auth-form {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          width: 100%;
+        }
+
+        .auth-form-card {
+          padding: 0;
+          border: none;
+          border-radius: 0;
+          background: transparent;
+          box-shadow: none;
+        }
+
         .auth-side-illustration {
           position: absolute;
           top: 0;
@@ -118,11 +137,23 @@ export default function AuthLayout({ children, showMascot = true }: AuthLayoutPr
           object-fit: cover;
         }
 
-        .auth-form {
+        .auth-mascot {
           display: flex;
-          flex-direction: column;
-          gap: 18px;
-          width: 100%;
+          justify-content: center;
+          align-items: center;
+          margin-top: 10px;
+          margin-bottom: 24px;
+          min-height: 230px;
+        }
+
+        .auth-tagline {
+          color: white;
+          font-size: clamp(18px, 2vw, 28px);
+          font-family: 'Poppins';
+          font-weight: 700;
+          text-align: center;
+          line-height: 30px;
+          margin-top: 4px;
         }
 
         .auth-form-title {
@@ -138,6 +169,16 @@ export default function AuthLayout({ children, showMascot = true }: AuthLayoutPr
           flex-direction: column;
           gap: 8px;
           width: 100%;
+        }
+
+        .auth-name-field {
+          gap: 4px;
+          margin-bottom: -12px;
+        }
+
+        .auth-name-count {
+          min-height: 16px;
+          line-height: 16px;
         }
 
         .auth-form-label {
@@ -244,8 +285,8 @@ export default function AuthLayout({ children, showMascot = true }: AuthLayoutPr
             height: auto !important;
             flex: 0 0 52% !important;
             min-width: 0;
-            min-height: 180px;
-            padding: 20px 16px 8px;
+            min-height: 120px;
+            padding: 24px 16px;
           }
           .auth-right-panel {
             position: relative;
@@ -260,88 +301,69 @@ export default function AuthLayout({ children, showMascot = true }: AuthLayoutPr
             max-width: 420px;
             margin-left: 0 !important;
           }
+          .auth-logo-row {
+            justify-content: flex-start !important;
+          }
         }
 
         @media (max-width: 767px) {
           .auth-shell {
-            padding: 0;
+            padding: 0 !important;
             align-items: stretch !important;
             justify-content: flex-start !important;
             flex-direction: column !important;
             width: 100vw !important;
             max-width: 100vw;
+            min-height: 100dvh !important;
+            height: auto !important;
+            overflow: visible !important;
             background: linear-gradient(180deg, #091541 0%, #2d7ce3 100%);
-          }
-          .auth-side-illustration {
-            display: none;
           }
           .auth-left-panel {
             width: 100% !important;
             height: auto !important;
             flex: 0 0 auto !important;
             min-width: 0;
-            padding: 28px 20px 16px;
+            padding: 24px 20px 18px !important;
             min-height: auto;
-            justify-content: flex-start;
-            background: linear-gradient(180deg, #091541 0%, #0e255d 42%, #3d78d3 100%);
-            border-bottom-left-radius: 92px;
-            border-bottom-right-radius: 92px;
+            justify-content: center;
+            background: transparent;
+            border-radius: 0;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
           }
-          .auth-left-panel::after {
-            content: '';
-            position: absolute;
-            bottom: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 220%;
-            height: 96px;
-            background: #4d8be3;
-            border-radius: 50%;
-            z-index: 0;
+          .auth-side-illustration,
+          .auth-mascot,
+          .auth-tagline {
+            display: none !important;
           }
           .auth-logo-row {
-            justify-content: center;
-            padding-left: 0;
-            margin-bottom: 8px;
+            justify-content: center !important;
+            padding-left: 0 !important;
+            margin: 0 !important;
           }
-          .auth-mascot {
-            margin-top: 4px;
-            margin-bottom: 10px;
-            min-height: 160px;
-            max-width: 180px;
-            width: 100%;
-          }
-          .auth-mascot img {
-            width: 100%;
-            height: auto;
-          }
-          .auth-left-panel > div:not(.auth-mascot) {
-            position: relative;
-            z-index: 1;
-          }
-          .auth-tagline {
-            display: none;
+          .auth-logo-row img {
+            width: 140px !important;
+            height: auto !important;
           }
           .auth-right-panel {
             width: 100% !important;
             height: auto !important;
-            flex: 0 0 auto !important;
+            flex: 1 0 auto !important;
             min-width: 0;
-            padding: 16px 18px 32px;
+            padding: 24px 18px 40px !important;
             margin-top: 0;
             z-index: 1;
           }
           .auth-form-card {
-            width: 100%;
-            max-width: 95%;
+            width: 100% !important;
+            max-width: 100% !important;
             margin: 0 auto;
-            padding: 0;
-            border-radius: 0;
-            background: transparent;
-            box-shadow: none;
-            border: none;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            background: #1e55a8;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
           }
           .auth-form-card > * {
             width: 100%;
@@ -364,10 +386,7 @@ export default function AuthLayout({ children, showMascot = true }: AuthLayoutPr
             font-size: 15px;
           }
           .auth-shell {
-            min-height: 100vh;
-          }
-          .auth-side-illustration img {
-            object-position: center top;
+            min-height: 100dvh !important;
           }
           .auth-left-panel {
             display: flex;

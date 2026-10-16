@@ -319,13 +319,14 @@ export default function FrequenciaPage() {
   const opcoesAtuais = indicePergunta < BANCO_PERGUNTAS.length ? BANCO_PERGUNTAS[indicePergunta]?.opcoes : undefined;
 
   return (
-    <div className="flex flex-1 flex-col h-full w-full gap-6 bg-transparent">
+    <div className="frequencia-page flex flex-1 flex-col h-full w-full gap-6 bg-transparent">
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <HeaderUsuario />
       </div>
 
-      <div style={cardStyle}>
+      <div className="frequencia-card" style={cardStyle}>
         <div
+          className="frequencia-content"
           style={{
             flex: isCompact ? '1 1 auto' : '1 1 50%',
             minWidth: 0,
@@ -420,7 +421,7 @@ export default function FrequenciaPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 26, paddingBottom: isCompact ? 12 : 24 }}>
             {botoes.map((b) => (
-              <button key={b.id} type="button" onClick={b.acao} style={botaoEstilo}>
+              <button className="frequencia-action-button" key={b.id} type="button" onClick={b.acao} style={botaoEstilo}>
                 <span style={{ color: '#091541', fontSize: 20, fontWeight: 600, fontFamily: 'Poppins' }}>{b.texto}</span>
                 <Image src={arrowIcon} alt="Abrir" width={29} height={29} style={{ filter: FILTRO_AZUL_ESCURO }} />
               </button>
@@ -429,6 +430,7 @@ export default function FrequenciaPage() {
         </div>
 
         <div
+          className="frequencia-caipo"
           style={{
             flex: isCompact ? '0 0 auto' : '1 1 50%',
             width: isCompact ? '100%' : '100%',

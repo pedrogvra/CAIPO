@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { PomodoroFocusProvider } from '@/contexts/PomodoroFocusContext';
 import Sidebar from '@/components/layout/Sidebar';
+import PomodoroTimer from '@/components/pomodoro/PomodoroTimer';
 
 export const metadata: Metadata = {
   title: 'CAIPO – Plataforma Inteligente de Estudos',
@@ -21,12 +23,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body className="flex min-h-screen flex-col bg-[#0A1A3A] overflow-hidden p-0 md:flex-row md:p-0">
         <AuthProvider>
-          <Sidebar />
-          <main
-            className="app-main flex min-h-screen h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-auto"
-          >
-            {children}
-          </main>
+          <PomodoroFocusProvider>
+            <Sidebar />
+            <main
+              className="app-main flex min-h-screen h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-auto"
+            >
+              <PomodoroTimer />
+              {children}
+            </main>
+          </PomodoroFocusProvider>
         </AuthProvider>
       </body>
     </html>

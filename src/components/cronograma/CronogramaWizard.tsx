@@ -164,25 +164,24 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
       <div style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1000, padding: 24, fontFamily: 'Poppins',
+        zIndex: 1100, padding: 24, fontFamily: 'Poppins',
         overflowY: 'auto',
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
-      }} className="cronograma-wizard-scroll">
+      }} className="cronograma-wizard-scroll cronograma-wizard-overlay">
         <div style={{
           width: '100%', maxWidth: 600,
-          minHeight: 620,
-          maxHeight: '90vh',
+          maxHeight: 'calc(100dvh - 48px)',
           overflowY: 'auto',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           background: 'linear-gradient(156deg, #1E55A8 0%, #091541 100%)',
           borderRadius: 25, padding: 32,
           boxShadow: '6px 6px 20px rgba(0, 0, 0, 0.5)',
-        }} className="cronograma-wizard-scroll">
+        }} className="cronograma-wizard-scroll cronograma-wizard-card">
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, margin: 0 }}>
+          <h2 className="cronograma-wizard-title" style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, margin: 0 }}>
             Criar Cronograma – Etapa {etapa}/4
           </h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: 28, cursor: 'pointer', lineHeight: 1 }}>×</button>
@@ -510,7 +509,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
         )}
 
         {/* Navigation */}
-        <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
+        <div className="cronograma-wizard-navigation" style={{ display: 'flex', gap: 12, marginTop: 28 }}>
           {etapa > 1 && (
             <button onClick={() => setEtapa(e => e - 1)}
               style={{

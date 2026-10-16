@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createToken } from '@/lib/auth';
 import { getSupabaseConnectionStatus, supabaseInsert } from '@/lib/supabase-data';
+import { validarNome } from '@/lib/validacaoNome';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,6 +9,13 @@ export async function POST(req: NextRequest) {
 
     if (!email || !nome || !senha || !confirmar_senha) {
       return NextResponse.json({ error: 'Todos os campos são obrigatórios.' }, { status: 400 });
+    }
+    if (typeof nome !== 'string') {
+      return NextResponse.json({ error: 'Informe um nome válido.' }, { status: 400 });
+    }
+    const erroNome = validarNome(nome);
+    if (erroNome) {
+      return NextResponse.json({ error: erroNome }, { status: 400 });
     }
     if (senha !== confirmar_senha) {
       return NextResponse.json({ error: 'As senhas não coincidem.' }, { status: 400 });

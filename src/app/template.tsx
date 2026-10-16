@@ -7,6 +7,8 @@ export default function Template({ children }: Readonly<{ children: React.ReactN
   const pathname = usePathname();
   const isAuthPage = ['/login', '/cadastro', '/recuperar-senha'].includes(pathname);
 
+  if (pathname === '/pomodoro') return null;
+
   return (
     <motion.div
       initial={isAuthPage ? false : { opacity: 0 }}

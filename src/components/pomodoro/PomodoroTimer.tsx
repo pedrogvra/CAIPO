@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import HeaderUsuario from '@/components/layout/HeaderUsuario';
 import Image from 'next/image';
@@ -16,6 +16,7 @@ import sofaIcon from '../../../assets/icons/sofa.svg';
 import anguloDireitoIcon from '../../../assets/icons/angulo-direito.svg';
 import { usePomodoro } from '@/hooks/usePomodoro';
 import type { PomodoroEstado } from '@/types/pomodoro';
+import { usePomodoroFocus } from '@/contexts/PomodoroFocusContext';
 
 type ChecklistItem = { id: string; texto: string; checked: boolean };
 
@@ -62,7 +63,9 @@ const corDoAnel = (progresso: number) => {
 
 export default function PomodoroTimer() {
   const router = useRouter();
+  const pathname = usePathname();
   const { usuario, loading, questionarioStatus, refreshQuestionario } = useAuth();
+  const { registerFocusGuard } = usePomodoroFocus();
   const [config, setConfig] = useState({
     tempo_foco: 25,
     tempo_pausa_curta: 5,
@@ -73,6 +76,8 @@ export default function PomodoroTimer() {
   const [mostraChecklist, setMostraChecklist] = useState(false);
   const [mostraMotivo, setMostraMotivo] = useState(false);
   const [mostraFinalizar, setMostraFinalizar] = useState(false);
+  const [mostraAvisoFoco, setMostraAvisoFoco] = useState(false);
+  const [mostraFimDescanso, setMostraFimDescanso] = useState(false);
   const [modoPendente, setModoPendente] = useState<Modo | null>(null);
   const [mensagemCaipo, setMensagemCaipo] = useState<string | undefined>();
   const [materiaNome, setMateriaNome] = useState('');
@@ -82,15 +87,29 @@ export default function PomodoroTimer() {
   const [modoAtivo, setModoAtivo] = useState<Modo>('focus');
   const [isCompact, setIsCompact] = useState(false);
   const [pressionado, setPressionado] = useState<null | 'play' | 'pausa' | 'reset'>(null);
+  const [popupPosition, setPopupPosition] = useState<{ left: number; top: number } | null>(null);
+  const [popupArrastando, setPopupArrastando] = useState(false);
 
   const painelRef = useRef<HTMLDivElement | null>(null);
   const materiaRef = useRef<HTMLDivElement | null>(null);
+  const popupRef = useRef<HTMLButtonElement | null>(null);
+  const popupDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    offsetY: number;
+    left: number;
+    top: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressPopupClickRef = useRef(false);
   const mensagemTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ultimaMensagemRef = useRef(0);
 
   useEffect(() => {
-    if (!loading && !usuario) router.push('/login');
-  }, [usuario, loading, router]);
+    if (pathname === '/pomodoro' && !loading && !usuario) router.push('/login');
+  }, [usuario, loading, pathname, router]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 819px)');
@@ -121,7 +140,7 @@ export default function PomodoroTimer() {
   }, []);
 
   useEffect(() => {
-    if (!usuario || questionarioStatus !== 'concluido') return;
+    if (pathname !== '/pomodoro' || !usuario || questionarioStatus !== 'concluido') return;
     fetch('/api/cronograma').then((r) => r.json()).then((d) => {
       if (d.cronograma) {
         const sessoes = Array.isArray(d.cronograma?.sessoes)
@@ -143,7 +162,7 @@ export default function PomodoroTimer() {
         });
       }
     });
-  }, [usuario, questionarioStatus]);
+  }, [pathname, usuario, questionarioStatus]);
 
   const handleSessaoConcluida = async (duracao: number) => {
     await fetch('/api/pomodoro/sessao', {
@@ -176,6 +195,13 @@ export default function PomodoroTimer() {
     });
   };
 
+  const handlePausaConcluida = useCallback(() => {
+    if (pathname === '/pomodoro') return true;
+    setModoAtivo('focus');
+    setMostraFimDescanso(true);
+    return false;
+  }, [pathname]);
+
   const pomodoro = usePomodoro({
     tempoFoco: config.tempo_foco,
     tempoPausaCurta: config.tempo_pausa_curta,
@@ -183,7 +209,15 @@ export default function PomodoroTimer() {
     sessoesAntesPausaLonga: config.sessoes_antes_pausa_longa,
     onSessaoConcluida: handleSessaoConcluida,
     onSessaoInterrompida: handleSessaoInterrompida,
+    onPausaConcluida: handlePausaConcluida,
   });
+  const { estado: pomodoroEstado, iniciado: pomodoroIniciado } = pomodoro;
+  const finalizarPomodoro = pomodoro.finalizar;
+
+  useEffect(() => {
+    if (pathname !== '/pomodoro' || !pomodoroIniciado || pomodoroEstado !== 'focus') return;
+    return registerFocusGuard(() => finalizarPomodoro('Perdi o foco ao sair do Pomodoro'));
+  }, [pathname, pomodoroIniciado, pomodoroEstado, finalizarPomodoro, registerFocusGuard]);
 
   useEffect(() => {
     if (
@@ -216,8 +250,213 @@ export default function PomodoroTimer() {
 
   const checklistCompleto = checklistItems.every((i) => i.checked);
 
+  const iniciarArrastePopup = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const left = popupPosition?.left ?? rect.left;
+    const top = popupPosition?.top ?? rect.top;
+    popupDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      left,
+      top,
+      moved: false,
+    };
+    setPopupPosition({ left, top });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const arrastarPopup = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = popupDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
+    drag.moved = true;
+    setPopupArrastando(true);
+
+    const rect = popupRef.current?.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - (rect?.width ?? 200) - 8);
+    const maxTop = Math.max(8, window.innerHeight - (rect?.height ?? 100) - 8);
+    drag.left = Math.max(8, Math.min(maxLeft, event.clientX - drag.offsetX));
+    drag.top = Math.max(8, Math.min(maxTop, event.clientY - drag.offsetY));
+    setPopupPosition({ left: drag.left, top: drag.top });
+  };
+
+  const soltarPopup = (event: React.PointerEvent<HTMLButtonElement>, cancelar = false) => {
+    const drag = popupDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    popupDragRef.current = null;
+    setPopupArrastando(false);
+    if (!drag.moved || cancelar) return;
+
+    suppressPopupClickRef.current = true;
+    window.setTimeout(() => {
+      suppressPopupClickRef.current = false;
+    }, 0);
+    const rect = popupRef.current?.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - (rect?.width ?? 200) - 8);
+    const maxTop = Math.max(8, window.innerHeight - (rect?.height ?? 100) - 8);
+    const corners = [
+      { left: 8, top: 8 },
+      { left: maxLeft, top: 8 },
+      { left: 8, top: maxTop },
+      { left: maxLeft, top: maxTop },
+    ];
+    const cantoMaisProximo = corners.reduce((maisProximo, canto) => {
+      const distancia = Math.hypot(canto.left - drag.left, canto.top - drag.top);
+      const menorDistancia = Math.hypot(maisProximo.left - drag.left, maisProximo.top - drag.top);
+      return distancia < menorDistancia ? canto : maisProximo;
+    });
+    setPopupPosition(cantoMaisProximo);
+  };
+
+  if (pathname !== '/pomodoro') {
+    if (mostraFimDescanso && usuario) {
+      return (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="descanso-concluido-title"
+          aria-describedby="descanso-concluido-description"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            background: 'rgba(0,0,0,0.7)',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              padding: 32,
+              borderRadius: 25,
+              background: 'linear-gradient(156deg, #1E55A8 0%, #091541 100%)',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+              color: 'white',
+              fontFamily: 'Poppins',
+            }}
+          >
+            <h2 id="descanso-concluido-title" style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 600 }}>
+              Seu descanso terminou!
+            </h2>
+            <p id="descanso-concluido-description" style={{ margin: '0 0 20px', color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 600, lineHeight: '24px' }}>
+              Deseja voltar ao Pomodoro para iniciar o modo foco ou continuar nesta página?
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => setMostraFimDescanso(false)}
+                style={{
+                  flex: 1,
+                  minHeight: 52,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  background: 'transparent',
+                  color: 'white',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'Poppins',
+                }}
+              >
+                Continuar aqui
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMostraFimDescanso(false);
+                  router.push('/pomodoro');
+                }}
+                style={{
+                  flex: 1,
+                  minHeight: 52,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: '#f87171',
+                  color: 'white',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'Poppins',
+                }}
+              >
+                Voltar ao Pomodoro
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const emDescanso = pomodoro.estado === 'pausa_curta' || pomodoro.estado === 'pausa_longa';
+    if (!usuario || !pomodoro.iniciado || !emDescanso) return null;
+
+    return (
+      <button
+        ref={popupRef}
+        type="button"
+        onPointerDown={iniciarArrastePopup}
+        onPointerMove={arrastarPopup}
+        onPointerUp={soltarPopup}
+        onPointerCancel={(event) => soltarPopup(event, true)}
+        onClick={() => {
+          if (suppressPopupClickRef.current) {
+            suppressPopupClickRef.current = false;
+            return;
+          }
+          router.push('/pomodoro');
+        }}
+        aria-label={`Abrir Pomodoro. ${pomodoro.estado === 'pausa_curta' ? 'Descanso' : 'Descanso longo'}${pomodoro.pausado ? ', pausado' : ''}, ${pomodoro.tempoFormatado} restantes`}
+        style={{
+          position: 'fixed',
+          ...(popupPosition
+            ? { left: popupPosition.left, top: popupPosition.top }
+            : { right: 24, bottom: 24 }),
+          zIndex: 80,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+          minWidth: 170,
+          padding: '14px 18px',
+          border: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: 16,
+          background: 'linear-gradient(156deg, #1E55A8 0%, #091541 100%)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+          color: 'white',
+          fontFamily: 'Poppins',
+          textAlign: 'left',
+          cursor: popupArrastando ? 'grabbing' : 'grab',
+          touchAction: 'none',
+          transition: popupArrastando ? 'none' : 'left 220ms cubic-bezier(0.2, 0.8, 0.2, 1), top 220ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+          {pomodoro.estado === 'pausa_curta' ? 'Descanso' : 'Descanso longo'}
+          {pomodoro.pausado ? ' · Pausado' : ''}
+        </span>
+        <span style={{ fontSize: 24, lineHeight: '28px', fontWeight: 700 }}>{pomodoro.tempoFormatado}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#FFDE68' }}>Voltar ao Pomodoro</span>
+      </button>
+    );
+  }
+
   const handleIniciarClick = () => {
     ultimaMensagemRef.current = 0;
+
+    if (modoAtivo === 'pausa_curta' || modoAtivo === 'pausa_longa') {
+      pomodoro.iniciar();
+      return;
+    }
 
     if (!materiaNome.trim()) {
       setMensagemCaipo('Selecione uma matéria antes de iniciar.');
@@ -263,12 +502,35 @@ export default function PomodoroTimer() {
   };
 
   const aplicarModo = (modo: Modo) => {
+    const modoDescanso = modo === 'pausa_curta' || modo === 'pausa_longa';
+    const focoAindaNaoConcluido = pomodoro.estado === 'focus'
+      || (pomodoro.estado === 'idle' && modoAtivo === 'focus');
+
+    if (modoDescanso && focoAindaNaoConcluido) {
+      setModoPendente(modo);
+      setMostraAvisoFoco(true);
+      return;
+    }
+
     if (pomodoro.iniciado || pomodoro.pausado) {
       setModoPendente(modo);
       setMostraFinalizar(true);
       return;
     }
 
+    setModoAtivo(modo);
+    pomodoro.definirModo(modo);
+  };
+
+  const continuarSemConcluirFoco = () => {
+    const modo = modoPendente;
+    setMostraAvisoFoco(false);
+    setModoPendente(null);
+    if (!modo) return;
+
+    if (pomodoro.iniciado || pomodoro.pausado) {
+      pomodoro.finalizar('Descanso iniciado sem concluir o foco');
+    }
     setModoAtivo(modo);
     pomodoro.definirModo(modo);
   };
@@ -291,14 +553,14 @@ export default function PomodoroTimer() {
 
   if (loading || !usuario)
     return (
-      <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
       </div>
     );
 
   if (questionarioStatus === 'loading')
     return (
-      <div style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="page-loading" style={{ minHeight: '100vh', background: '#091541', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'white', fontSize: 24, fontFamily: 'Poppins', fontWeight: 600 }}>Carregando...</div>
       </div>
     );
@@ -584,12 +846,12 @@ export default function PomodoroTimer() {
           display: none;
         }
       `}</style>
-      <div className="flex flex-1 flex-col h-full w-full gap-6 bg-transparent" style={{ minHeight: 0, overflow: 'hidden' }}>
+      <div className="pomodoro-page flex flex-1 flex-col h-full w-full gap-6 bg-transparent" style={{ minHeight: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <HeaderUsuario />
         </div>
 
-        <div className="pomodoro-scrollbar-hidden" style={cardStyle}>
+        <div className="pomodoro-scrollbar-hidden pomodoro-card" style={cardStyle}>
         <div style={{ ...tituloStyle, minWidth: 116, whiteSpace: 'nowrap' }}>Pomodoro</div>
 
         <div ref={materiaRef} style={{ ...materiaWrapStyle, minWidth: 0 }}>
@@ -731,7 +993,7 @@ export default function PomodoroTimer() {
           )}
         </div>
 
-        <div style={circuloWrapStyle}>
+        <div className="pomodoro-clock" style={circuloWrapStyle}>
           <svg
             width="303"
             height="303"
@@ -772,10 +1034,10 @@ export default function PomodoroTimer() {
               textAlign: 'center',
             }}
           >
-            <div style={{ color: '#091541', fontSize: 24, fontWeight: 600, marginBottom: 6, fontFamily: 'Poppins' }}>
+            <div className="pomodoro-clock-label" style={{ color: '#091541', fontSize: 24, fontWeight: 600, marginBottom: 6, fontFamily: 'Poppins' }}>
               {modoConfig[modoAtivo].label}
             </div>
-            <div style={{ color: '#091541', fontSize: 68, fontWeight: 600, lineHeight: 1, fontFamily: 'Poppins' }}>
+            <div className="pomodoro-clock-time" style={{ color: '#091541', fontSize: 68, fontWeight: 600, lineHeight: 1, fontFamily: 'Poppins' }}>
               {pomodoro.tempoFormatado}
             </div>
           </div>
@@ -783,11 +1045,14 @@ export default function PomodoroTimer() {
 
         {mensagemCaipo && (
           <div
+            role="status"
             style={{
               position: 'absolute',
-              top: 8,
+              top: mensagemCaipo === 'Selecione uma matéria antes de iniciar.' ? '60%' : 8,
               left: '50%',
-              transform: 'translateX(-50%)',
+              transform: mensagemCaipo === 'Selecione uma matéria antes de iniciar.'
+                ? 'translate(-50%, -50%)'
+                : 'translateX(-50%)',
               background: '#FFFFFF',
               color: '#091541',
               fontSize: 14,
@@ -797,7 +1062,8 @@ export default function PomodoroTimer() {
               borderRadius: 16,
               boxShadow: '4px 4px 10px rgba(0, 0, 0, 0.2)',
               zIndex: 30,
-              maxWidth: 300,
+              width: 'max-content',
+              maxWidth: 'min(360px, calc(100% - 32px))',
               textAlign: 'center',
             }}
           >
@@ -805,7 +1071,7 @@ export default function PomodoroTimer() {
           </div>
         )}
 
-        <div style={controlesStyle}>
+        <div className="pomodoro-controls" style={controlesStyle}>
           <button
             type="button"
             aria-label="Pausar"
@@ -843,6 +1109,9 @@ export default function PomodoroTimer() {
                 handleIniciarClick();
               } else if (pomodoro.pausado) {
                 pomodoro.retomar();
+              } else {
+                pomodoro.pausar();
+                setMostraMotivo(true);
               }
             }}
             style={estiloBotaoControle(
@@ -936,14 +1205,24 @@ export default function PomodoroTimer() {
             </div>
 
             {checklistItems.map((item) => (
-              <label
+              <div
                 key={item.id}
+                role="checkbox"
+                aria-checked={item.checked}
+                tabIndex={0}
+                onClick={() =>
+                  setChecklistItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, checked: !i.checked } : i)))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === ' ' || event.key === 'Enter') {
+                    event.preventDefault();
+                    setChecklistItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, checked: !i.checked } : i)));
+                  }
+                }}
                 style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16, cursor: 'pointer' }}
               >
                 <div
-                  onClick={() =>
-                    setChecklistItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, checked: !i.checked } : i)))
-                  }
+                  aria-hidden="true"
                   style={{
                     width: 28,
                     height: 28,
@@ -964,7 +1243,7 @@ export default function PomodoroTimer() {
                   )}
                 </div>
                 <span style={{ color: 'white', fontSize: 18, fontWeight: 600 }}>{item.texto}</span>
-              </label>
+              </div>
             ))}
 
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
@@ -1079,6 +1358,88 @@ export default function PomodoroTimer() {
           </div>
         </div>
       )}
+
+        {mostraAvisoFoco && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="aviso-foco-title"
+            aria-describedby="aviso-foco-description"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1100,
+              padding: 24,
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: 440,
+                background: 'linear-gradient(156deg, #1E55A8 0%, #091541 100%)',
+                borderRadius: 25,
+                padding: 32,
+                boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+                color: 'white',
+                fontFamily: 'Poppins',
+              }}
+            >
+              <h2 id="aviso-foco-title" style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 600 }}>
+                Faça uma sessão de foco primeiro
+              </h2>
+              <p id="aviso-foco-description" style={{ margin: '0 0 20px', color: 'rgba(255,255,255,0.7)', fontSize: 16, fontWeight: 600, lineHeight: '24px' }}>
+                O descanso normalmente vem depois do foco. Se preferir, você pode iniciar o descanso sem concluir uma sessão de foco.
+              </p>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostraAvisoFoco(false);
+                    setModoPendente(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    minHeight: 52,
+                    padding: '12px',
+                    borderRadius: 10,
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    background: 'transparent',
+                    color: 'white',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'Poppins',
+                  }}
+                >
+                  Voltar ao foco
+                </button>
+                <button
+                  type="button"
+                  onClick={continuarSemConcluirFoco}
+                  style={{
+                    flex: 1,
+                    minHeight: 52,
+                    padding: '12px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: '#f87171',
+                    color: 'white',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'Poppins',
+                  }}
+                >
+                  Descansar mesmo assim
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {mostraFinalizar && (
           <div

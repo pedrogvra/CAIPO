@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import AuthLayout from '@/components/auth/AuthLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { MAX_CARACTERES_NOME, contarCaracteresNome, validarNome } from '@/lib/validacaoNome';
 import eyeOpenIcon from '../../../../assets/icons/olho.svg';
 import eyeClosedIcon from '../../../../assets/icons/olhos-cruzados.svg';
 
@@ -27,6 +28,11 @@ export default function CadastroPage() {
 
     if (!email || !nome || !senha || !confirmar_senha) {
       setErro('Preencha todos os campos.');
+      return;
+    }
+    const erroValidacaoNome = validarNome(nome);
+    if (erroValidacaoNome) {
+      setErro(erroValidacaoNome);
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -94,15 +100,23 @@ export default function CadastroPage() {
           />
         </div>
 
-        <div className="auth-form-field">
+        <div className="auth-form-field auth-name-field">
           <label className="auth-form-label">Nome</label>
           <input
             className="auth-form-input"
             type="text"
             value={nome}
-            onChange={e => setNome(e.target.value)}
+            onChange={e => {
+              setNome(e.target.value);
+              const erroValidacao = e.target.value.trim() ? validarNome(e.target.value) : null;
+              setErro(erroValidacao ?? '');
+            }}
             placeholder="Digite seu nome"
+            aria-describedby="nome-contagem"
           />
+          <div id="nome-contagem" className="auth-name-count" style={{ color: validarNome(nome) ? '#fecaca' : 'rgba(255,255,255,0.75)', fontSize: 12, fontFamily: 'Poppins', textAlign: 'right' }}>
+            {contarCaracteresNome(nome)}/{MAX_CARACTERES_NOME}
+          </div>
         </div>
 
         <div className="auth-form-field">
@@ -186,7 +200,7 @@ export default function CadastroPage() {
         </div>
 
         {erro && (
-          <div style={{
+          <div className="auth-form-error" role="alert" style={{
             background: 'rgba(255,0,0,0.15)',
             border: '1px solid rgba(255,0,0,0.4)',
             borderRadius: 8,

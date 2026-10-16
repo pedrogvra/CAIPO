@@ -77,21 +77,21 @@ export default function CronogramaPage() {
   );
 
   return (
-    <div className="flex flex-1 flex-col h-full w-full gap-6 bg-transparent">
+    <div className="cronograma-page flex flex-1 flex-col h-full w-full gap-6 bg-transparent">
         {/* Header */}
         <div className="flex justify-end">
           <HeaderUsuario />
         </div>
 
         {/* Card Principal Azul */}
-        <div className="flex-1 w-full overflow-hidden rounded-2xl bg-[#1A4B9A] p-6 flex flex-col shadow-[6px_6px_10.6px_rgba(0,0,0,0.25)]" style={{ padding: 'var(--page-padding)' }}>
+        <div className="cronograma-card flex-1 w-full overflow-hidden rounded-2xl bg-[#1A4B9A] p-6 flex flex-col shadow-[6px_6px_10.6px_rgba(0,0,0,0.25)]" style={{ padding: 'var(--page-padding)' }}>
           {/* Título */}
-          <div style={{ color: '#FFDE68', fontSize: 36, fontWeight: 600, marginBottom: 16 }}>
+          <div className="cronograma-title" style={{ color: '#FFDE68', fontSize: 36, fontWeight: 600, marginBottom: 16 }}>
             Seu último cronograma
           </div>
 
           {/* Área do cronograma */}
-          <div style={{
+          <div className="cronograma-content" style={{
             background: 'white',
             borderRadius: 12,
             padding: 16,
@@ -109,7 +109,8 @@ export default function CronogramaPage() {
                 <div style={{ fontWeight: 700, color: '#091541', marginBottom: 16, fontSize: 18 }}>
                   {cronograma.nome}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(100px, 1fr))', gap: 8, fontSize: 13 }}>
+                <div className="cronograma-grid-scroll" aria-label="Cronograma semanal">
+                <div className="cronograma-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${diasParaExibir.length}, minmax(100px, 1fr))`, gap: 8, fontSize: 13 }}>
                   {diasParaExibir.map((dia, index) => {
                     const sessoesdia = cronograma.sessoes.filter(s => s.dia_semana === dia);
                     const materiasMap = Object.fromEntries(materias.map(m => [m.nome, m]));
@@ -156,6 +157,7 @@ export default function CronogramaPage() {
                       </div>
                     );
                   })}
+                </div>
                 </div>
               </div>
             ) : (

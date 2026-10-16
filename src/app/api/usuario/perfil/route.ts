@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getTokenFromCookie } from '@/lib/auth';
 import { getSupabaseConnectionStatus, supabaseUpdate } from '@/lib/supabase-data';
+import { validarNome } from '@/lib/validacaoNome';
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -18,8 +19,9 @@ export async function PATCH(req: NextRequest) {
       ? body.nome.trim()
       : '';
 
-    if (!nome || nome.length > 100) {
-      return NextResponse.json({ error: 'Informe um nome com até 100 caracteres.' }, { status: 400 });
+    const erroNome = validarNome(nome);
+    if (erroNome) {
+      return NextResponse.json({ error: erroNome }, { status: 400 });
     }
 
     const usuarios = await supabaseUpdate<Array<{ id: string; nome: string }>>(

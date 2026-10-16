@@ -36,6 +36,12 @@ body:has(.page-loading) .app-main {
   z-index: 100;
 }
 
+body:has(.page-loading) .sidebar-shell,
+body:has(.page-loading) .mobile-menu-toggle,
+body:has(.page-loading) .mobile-menu-backdrop {
+  display: none !important;
+}
+
 body {
   min-height: 100vh;
   font-family: 'Poppins', sans-serif;
@@ -52,6 +58,187 @@ body::-webkit-scrollbar {
 }
 
 @media (max-width: 900px) {
+  .app-main:has(.auth-shell) {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .app-main:has(.auth-shell)::-webkit-scrollbar {
+    display: none !important;
+    width: 0;
+    height: 0;
+  }
+
+  .app-main:has(.pomodoro-page) {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .app-main:has(.pomodoro-page)::-webkit-scrollbar {
+    display: none !important;
+    width: 0;
+    height: 0;
+  }
+
+  .pomodoro-page {
+    height: auto !important;
+    min-height: 100%;
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+    gap: 16px !important;
+  }
+
+  .pomodoro-card {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  .pomodoro-clock {
+    width: min(100%, 280px) !important;
+    height: auto !important;
+    aspect-ratio: 1;
+  }
+
+  .pomodoro-clock > svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .pomodoro-clock-label {
+    font-size: clamp(18px, 6vw, 24px) !important;
+  }
+
+  .pomodoro-clock-time {
+    font-size: clamp(48px, 16vw, 68px) !important;
+  }
+
+  .pomodoro-controls {
+    gap: 10px !important;
+  }
+
+  .pomodoro-controls > button:first-child,
+  .pomodoro-controls > button:last-child {
+    width: 66px !important;
+    height: 66px !important;
+    margin-top: 12px !important;
+  }
+
+  .pomodoro-controls > button:nth-child(2) {
+    width: 92px !important;
+    height: 92px !important;
+  }
+
+  .pomodoro-controls > button img {
+    max-width: 66% !important;
+    max-height: 66% !important;
+  }
+
+  .app-main:has(.frequencia-page) {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .app-main:has(.frequencia-page)::-webkit-scrollbar {
+    display: none !important;
+    width: 0;
+    height: 0;
+  }
+
+  .frequencia-page {
+    height: auto !important;
+    min-height: 100%;
+    flex: 0 0 auto !important;
+    gap: 16px !important;
+  }
+
+  .frequencia-card {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    gap: 20px !important;
+    padding: 16px !important;
+  }
+
+  .frequencia-content {
+    flex: 0 0 auto !important;
+    justify-content: flex-start !important;
+    gap: 20px !important;
+  }
+
+  .frequencia-action-button {
+    min-height: 58px;
+    height: auto !important;
+    gap: 10px;
+    padding: 10px 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .frequencia-action-button > span {
+    min-width: 0;
+    font-size: 17px !important;
+    line-height: 1.35;
+    text-align: left;
+  }
+
+  .frequencia-action-button img {
+    flex: 0 0 24px;
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .frequencia-caipo {
+    margin-top: 8px !important;
+    padding-bottom: 0 !important;
+    gap: 16px !important;
+  }
+
+  .cronograma-wizard-overlay {
+    align-items: center !important;
+    padding: 18px !important;
+    z-index: 1100 !important;
+  }
+
+  .cronograma-wizard-card {
+    min-height: 0 !important;
+    max-height: calc(100dvh - 56px) !important;
+    padding: 18px !important;
+    border-radius: 20px !important;
+  }
+
+  .cronograma-wizard-title {
+    min-width: 0;
+    font-size: clamp(20px, 6vw, 26px) !important;
+    line-height: 1.3;
+  }
+
+  .cronograma-wizard-card input,
+  .cronograma-wizard-card select {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .cronograma-wizard-navigation {
+    position: static;
+    margin-top: 16px !important;
+    padding: 0;
+    background: transparent;
+  }
+
+  .cronograma-wizard-navigation button {
+    padding: 11px !important;
+    border-radius: 10px !important;
+    font-size: 15px !important;
+  }
+
   .app-main {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -66,7 +253,8 @@ body::-webkit-scrollbar {
 
   .app-main:has(.auth-shell) {
     padding: 0 !important;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
     width: 100vw !important;
     max-width: 100vw;
     min-width: 0;
@@ -119,24 +307,98 @@ body::-webkit-scrollbar {
   overflow: visible;
 }
 
+.cronograma-page {
+  min-height: 100%;
+}
+
+.cronograma-grid-scroll {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
-  .sidebar-shell {
+  .app-main:has(.cronograma-page) {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .app-main:has(.cronograma-page)::-webkit-scrollbar {
+    display: none !important;
+    width: 0;
+    height: 0;
+  }
+
+  .cronograma-page {
+    height: auto !important;
+    min-height: 100%;
+    flex: 0 0 auto !important;
+    gap: 16px !important;
+  }
+
+  .cronograma-card {
+    height: auto !important;
+    min-height: calc(100dvh - 150px);
+    flex: 0 0 auto !important;
+    overflow: visible !important;
+    gap: 10px;
+    padding: 16px !important;
+  }
+
+  .cronograma-title {
+    font-size: clamp(26px, 7vw, 36px) !important;
+    line-height: 1.2;
+    margin-bottom: 2px !important;
+  }
+
+  .cronograma-content {
+    flex: 0 0 auto !important;
+    min-height: 300px !important;
+    overflow: hidden !important;
+    padding: 12px !important;
+  }
+
+  .cronograma-card > button {
+    position: static !important;
+    align-self: flex-end;
+    flex: 0 0 72px;
     width: 72px !important;
-    padding-left: 6px !important;
-    padding-right: 6px !important;
-    overflow: hidden;
+    height: 72px !important;
+    margin-top: 2px;
   }
 
-  .sidebar-shell > div:first-child {
-    overflow: hidden;
+  .cronograma-card > button img {
+    width: 36px;
+    height: 36px;
   }
 
-  .sidebar-shell > div:first-child img {
-    width: 58px !important;
+  .cronograma-grid-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #1a4b9a #e5e7eb;
   }
 
-  .sidebar-shell span {
-    display: none;
+  .cronograma-grid-scroll::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .cronograma-grid-scroll::-webkit-scrollbar-track {
+    background: #e5e7eb;
+    border-radius: 999px;
+  }
+
+  .cronograma-grid-scroll::-webkit-scrollbar-thumb {
+    background: #1a4b9a;
+    border-radius: 999px;
+  }
+
+  .cronograma-grid {
+    width: max-content;
+    min-width: 0;
   }
 
   .dashboard-page {
@@ -214,21 +476,105 @@ input, button, select, textarea {
 
 @media (max-width: 900px) {
   :root {
-    --sidebar-width: 72px;
-  }
-}
-
-@media (max-width: 480px) {
-  :root {
     --sidebar-width: 0px;
   }
-  body {
-    overflow-y: auto;
+
+  button.mobile-menu-toggle {
+    position: fixed;
+    top: max(30px, calc(env(safe-area-inset-top, 0px) + 14px));
+    left: 14px;
+    z-index: 1002;
+    width: 38px;
+    height: 46px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+    transition: opacity 160ms ease, visibility 160ms ease;
+  }
+
+  button.mobile-menu-toggle.mobile-menu-toggle-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .mobile-menu-toggle span {
+    width: 27px;
+    height: 3px;
+    border-radius: 3px;
+    background: white;
   }
 
   .sidebar-shell {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    padding: 112px 24px 32px !important;
+    border-radius: 0 !important;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 220ms ease, visibility 220ms ease;
+    z-index: 1001 !important;
+    align-items: center;
+  }
+
+  .sidebar-shell.mobile-menu-open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .sidebar-shell > div:first-child {
     display: none !important;
   }
+
+  .sidebar-shell > a {
+    width: min(100%, 420px) !important;
+    min-height: 60px !important;
+    padding: 12px 18px !important;
+    justify-content: flex-start;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+  }
+
+  .sidebar-shell span {
+    display: inline !important;
+    font-size: 19px !important;
+  }
+
+  .sidebar-shell > button {
+    width: min(100%, 420px) !important;
+    min-height: 60px;
+    margin-bottom: 36px;
+    padding: 12px 18px !important;
+    justify-content: flex-start;
+    color: white;
+    font-size: 19px;
+  }
+
+  .sidebar-shell > div:nth-last-child(2) {
+    flex: 1 1 auto !important;
+  }
+
+  button.mobile-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    border: 0;
+    background: rgba(0,0,0,0.55);
+  }
+
+}
+
+.mobile-menu-toggle,
+.mobile-menu-backdrop {
+  display: none;
 }
 
 /* when sidebar is mounted, increase main padding to avoid overlap */
