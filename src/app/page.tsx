@@ -1,25 +1,17 @@
-import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { verifyToken } from '@/lib/auth';
 
 export default async function RootPage() {
   const cookieStore = await cookies();
-  const supabase = await createClient(cookieStore);
+  const token = cookieStore.get('caipo_token')?.value;
 
-  const { data: todos } = await supabase.from('todos').select();
-
-  if (!todos) {
+  if (!token) {
     redirect('/login');
   }
 
-  return (
-    <main style={{ padding: 24 }}>
-      <h1>Supabase conectado</h1>
-      <ul>
-        {todos.map((todo: { id: string; name: string }) => (
-          <li key={todo.id}>{todo.name}</li>
-        ))}
-      </ul>
-    </main>
-  );
+  const usuario = await verifyToken(token);
+  if (!usuario) redirect('/login');
+
+  redirect(usuario.primeiro_acesso ? '/onboarding' : '/dashboard');
 }
