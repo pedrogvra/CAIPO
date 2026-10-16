@@ -202,14 +202,14 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <h3 style={{ color: 'white', fontSize: 20, fontWeight: 600, margin: 0 }}>Disponibilidade</h3>
 
-            <div style={{ display: 'flex', gap: 16 }}>
-              <div style={{ flex: 1 }}>
+            <div className="cronograma-availability-times" style={{ display: 'flex', gap: 16 }}>
+              <div className="cronograma-availability-time-field" style={{ flex: 1 }}>
                 <label style={labelStyle}>Horário de acordar</label>
-                <input type="time" value={horarioAcordar} onChange={e => setHorarioAcordar(e.target.value)} style={{ ...inputStyle, width: '100%' }} />
+                <input className="cronograma-availability-time-input" type="time" value={horarioAcordar} onChange={e => setHorarioAcordar(e.target.value)} style={{ ...inputStyle, width: '100%' }} />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="cronograma-availability-time-field" style={{ flex: 1 }}>
                 <label style={labelStyle}>Horário de dormir</label>
-                <input type="time" value={horarioDormir} onChange={e => setHorarioDormir(e.target.value)} style={{ ...inputStyle, width: '100%' }} />
+                <input className="cronograma-availability-time-input" type="time" value={horarioDormir} onChange={e => setHorarioDormir(e.target.value)} style={{ ...inputStyle, width: '100%' }} />
               </div>
             </div>
 

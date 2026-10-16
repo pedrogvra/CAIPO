@@ -156,15 +156,15 @@ export default function DashboardPage() {
               {cronograma ? (
                 <div>
                   <div style={{ fontWeight: 700, color: '#091541', marginBottom: 8, fontSize: 14 }}>{cronograma.nome}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, fontSize: 11 }}>
+                  <div className="dashboard-schedule-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, fontSize: 11 }}>
                     {(cronograma.dias_disponiveis && cronograma.dias_disponiveis.length > 0
                       ? [...new Set(cronograma.dias_disponiveis)].sort((a, b) => a - b)
                       : [0, 1, 2, 3, 4, 5, 6]
                     ).map((dia, index) => (
-                      <div key={`${dia}-${index}`} style={{ textAlign: 'center' }}>
+                      <div className="dashboard-schedule-day" key={`${dia}-${index}`} style={{ textAlign: 'center' }}>
                         <div style={{ fontWeight: 700, color: '#1E55A8', marginBottom: 4 }}>{DIAS[dia] ?? `Dia ${dia + 1}`}</div>
                         {cronograma.sessoes.filter(s => s.dia_semana === dia).slice(0, 2).map((s, j) => (
-                          <div key={`${s.materia}-${s.horario_inicio}-${j}`} style={{
+                          <div className="dashboard-schedule-session" key={`${s.materia}-${s.horario_inicio}-${j}`} style={{
                             background: '#1E55A8',
                             color: 'white',
                             borderRadius: 4,
