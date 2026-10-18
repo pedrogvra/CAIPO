@@ -20,13 +20,24 @@ export default function RecuperarSenhaPage() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErro('E-mail inválido.'); return; }
 
     setLoading(true);
-    await fetch('/api/auth/recuperar-senha', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    setLoading(false);
-    setEstado('confirmacao');
+    try {
+      const response = await fetch('/api/auth/recuperar-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) {
+        setErro(data.error || 'Não foi possível enviar o e-mail de recuperação. Tente novamente.');
+        return;
+      }
+      setEstado('confirmacao');
+    } catch (error) {
+      console.error('Erro ao solicitar recuperação de senha:', error);
+      setErro('Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputStyle: React.CSSProperties = {
