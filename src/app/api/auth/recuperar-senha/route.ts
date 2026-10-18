@@ -25,14 +25,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'O serviço de recuperação de senha não está configurado.' }, { status: 500 });
     }
 
-    const supabaseResponse = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/recover`, {
+    const redirectTo = new URL('/redefinir-senha', req.nextUrl.origin).toString();
+    const supabaseResponse = await fetch(
+      `${supabaseUrl.replace(/\/+$/, '')}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`,
+      {
       method: 'POST',
       headers: {
         apikey: supabaseKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email }),
-    });
+      },
+    );
 
     if (!supabaseResponse.ok) {
       const responseBody = await supabaseResponse.json().catch(() => ({})) as {
