@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import AuthLayout from '@/components/auth/AuthLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/utils/supabase/client';
 import eyeOpenIcon from '../../../../assets/icons/olho.svg';
 import eyeClosedIcon from '../../../../assets/icons/olhos-cruzados.svg';
 
@@ -17,6 +18,39 @@ export default function LoginPage() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const isRecoveryLink = hashParams.get('type') === 'recovery';
+    const hasRecoveryError = hashParams.has('error_code');
+    if (!isRecoveryLink && !hasRecoveryError) return;
+
+    const supabase = createClient();
+    let redirected = false;
+    const goToPasswordReset = (hasSession: boolean) => {
+      if (redirected) return;
+      redirected = true;
+      if (hasSession) sessionStorage.setItem('caipo_password_recovery', '1');
+      const hash = hasRecoveryError || !hasSession ? window.location.hash : '';
+      router.replace(`/redefinir-senha${hash}`);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && session) goToPasswordReset(true);
+    });
+
+    if (hasRecoveryError) {
+      goToPasswordReset(false);
+    } else {
+      void supabase.auth.getSession().then(({ data, error: sessionError }) => {
+        if (sessionError) console.error('Não foi possível validar a sessão de recuperação:', sessionError.message);
+        if (data.session) goToPasswordReset(true);
+        else goToPasswordReset(false);
+      });
+    }
+
+    return () => subscription.unsubscribe();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

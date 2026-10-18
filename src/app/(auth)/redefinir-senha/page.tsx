@@ -30,12 +30,28 @@ export default function RedefinirSenhaPage() {
       return () => window.clearTimeout(invalidLinkTimeout);
     }
 
+    let active = true;
+    const isRecoveryLink = hash.get('type') === 'recovery';
+    const hasRecoveryMarker = sessionStorage.getItem('caipo_password_recovery') === '1';
+    const markAsReady = () => {
+      if (!active) return;
+      sessionStorage.removeItem('caipo_password_recovery');
+      setEstado('pronto');
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY' && session) {
-        setEstado('pronto');
-        window.history.replaceState(null, '', window.location.pathname);
+        markAsReady();
       }
     });
+
+    if (isRecoveryLink || hasRecoveryMarker) {
+      void supabase.auth.getSession().then(({ data, error: sessionError }) => {
+        if (sessionError) console.error('Não foi possível validar a sessão de recuperação:', sessionError.message);
+        if (data.session) markAsReady();
+      });
+    }
 
     const timeout = window.setTimeout(() => {
       setEstado(current => {
@@ -48,6 +64,7 @@ export default function RedefinirSenhaPage() {
     }, 10000);
 
     return () => {
+      active = false;
       window.clearTimeout(timeout);
       subscription.unsubscribe();
     };
@@ -75,6 +92,7 @@ export default function RedefinirSenhaPage() {
         setErro('Não foi possível atualizar sua senha. Solicite um novo link e tente novamente.');
         return;
       }
+      sessionStorage.removeItem('caipo_password_recovery');
       setEstado('concluido');
     } catch (error) {
       console.error('Erro ao atualizar senha:', error);
