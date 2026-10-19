@@ -18,6 +18,8 @@ export default function CronogramaPage() {
   const [cronograma, setCronograma] = useState<CronogramaCompleto | null>(null);
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [mostrando, setMostrando] = useState(false);
+  const [confirmandoNovo, setConfirmandoNovo] = useState(false);
+  const [modoWizard, setModoWizard] = useState<'novo' | 'editar'>('novo');
   const [loadingData, setLoadingData] = useState(true);
 
   const diasParaExibir = cronograma?.dias_disponiveis && cronograma.dias_disponiveis.length > 0
@@ -173,50 +175,155 @@ export default function CronogramaPage() {
             )}
           </div>
 
-          {/* Ação do cronograma */}
-          <button
-            onClick={() => setMostrando(true)}
-            aria-label={cronograma ? 'Editar cronograma' : 'Criar cronograma'}
-            disabled={loadingData}
-            style={{
-              alignSelf: 'flex-end',
-              marginTop: 16,
-              minWidth: cronograma ? 210 : 100,
-              height: cronograma ? 58 : 100,
-              padding: cronograma ? '0 24px' : 0,
-              borderRadius: cronograma ? 30 : '50%',
-              background: '#FFDE68',
-              boxShadow: '6px 6px 10.6px rgba(0, 0, 0, 0.25)',
-              border: 'none',
-              cursor: loadingData ? 'wait' : 'pointer',
-              opacity: loadingData ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'sticky',
-              bottom: 20,
-              zIndex: 20,
-            }}
-          >
-            {cronograma ? (
-              <span style={{ color: '#091541', fontSize: 17, fontWeight: 700, fontFamily: 'Poppins' }}>Editar cronograma</span>
-            ) : (
-              <Image src={plusIcon} alt="" width={50} height={50} style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(34%) saturate(1367%) hue-rotate(183deg) brightness(96%) contrast(99%)' }} />
+          {/* Ações do cronograma */}
+          <div style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12, marginTop: 16, position: 'sticky', bottom: 20, zIndex: 20 }}>
+            <button
+              onClick={() => {
+                setModoWizard(cronograma ? 'editar' : 'novo');
+                setMostrando(true);
+              }}
+              aria-label={cronograma ? 'Editar cronograma' : 'Criar cronograma'}
+              disabled={loadingData}
+              style={{
+                minWidth: cronograma ? 190 : 100,
+                height: cronograma ? 58 : 100,
+                padding: cronograma ? '0 24px' : 0,
+                borderRadius: cronograma ? 30 : '50%',
+                background: '#FFDE68',
+                boxShadow: '6px 6px 10.6px rgba(0, 0, 0, 0.25)',
+                border: 'none',
+                cursor: loadingData ? 'wait' : 'pointer',
+                opacity: loadingData ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {cronograma ? (
+                <span style={{ color: '#091541', fontSize: 17, fontWeight: 700, fontFamily: 'Poppins' }}>Editar cronograma</span>
+              ) : (
+                <Image src={plusIcon} alt="" width={50} height={50} style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(34%) saturate(1367%) hue-rotate(183deg) brightness(96%) contrast(99%)' }} />
+              )}
+            </button>
+            {cronograma && (
+              <button
+                type="button"
+                onClick={() => setConfirmandoNovo(true)}
+                disabled={loadingData}
+                style={{
+                  minHeight: 58,
+                  padding: '0 20px',
+                  borderRadius: 30,
+                  background: 'transparent',
+                  border: '2px solid #FFDE68',
+                  color: '#FFDE68',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontFamily: 'Poppins',
+                  cursor: loadingData ? 'wait' : 'pointer',
+                  opacity: loadingData ? 0.7 : 1,
+                }}
+              >
+                Criar outro cronograma
+              </button>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Wizard (Mantido aqui fora, mas dentro do main) */}
         {mostrando && (
           <CronogramaWizard
             onClose={() => setMostrando(false)}
-            cronogramaInicial={cronograma}
+            cronogramaInicial={modoWizard === 'editar' ? cronograma : null}
             materiasDisponiveis={materias}
             onSuccess={() => {
               setMostrando(false);
               loadCronograma();
             }}
           />
+        )}
+        {confirmandoNovo && (
+          <div
+            role="presentation"
+            onClick={() => setConfirmandoNovo(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 1200,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 20,
+              background: 'rgba(0,0,0,0.65)',
+            }}
+          >
+            <div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="novo-cronograma-titulo"
+              aria-describedby="novo-cronograma-descricao"
+              onClick={event => event.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: 440,
+                padding: 28,
+                borderRadius: 20,
+                background: 'linear-gradient(156deg, #2864B8 0%, #091541 100%)',
+                boxShadow: '0 16px 40px rgba(0,0,0,0.35)',
+                color: 'white',
+                fontFamily: 'Poppins',
+              }}
+            >
+              <h2 id="novo-cronograma-titulo" style={{ color: '#FFDE68', fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
+                Criar outro cronograma?
+              </h2>
+              <p id="novo-cronograma-descricao" style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
+                Ao salvar um novo, ele ficará no lugar do cronograma atual. Se desistir antes de salvar, o atual será mantido.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoNovo(false)}
+                  style={{
+                    minHeight: 46,
+                    padding: '0 18px',
+                    border: '1px solid rgba(255,255,255,0.45)',
+                    borderRadius: 10,
+                    background: 'transparent',
+                    color: 'white',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    fontFamily: 'Poppins',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Manter atual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmandoNovo(false);
+                    setModoWizard('novo');
+                    setMostrando(true);
+                  }}
+                  style={{
+                    minHeight: 46,
+                    padding: '0 18px',
+                    border: 0,
+                    borderRadius: 10,
+                    background: '#FFDE68',
+                    color: '#091541',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    fontFamily: 'Poppins',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          </div>
         )}
     </div>
   );
