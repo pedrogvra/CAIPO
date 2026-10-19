@@ -7,6 +7,7 @@ export interface Cronograma {
   dias_disponiveis?: number[] | null;
   periodo_preferido?: string | null;
   tempo_max_sem_pausa?: number | null;
+  intervalo_entre_sessoes?: 5 | 15 | null;
   varias_materias_por_dia?: boolean | null;
   created_at?: Date | null;
   updated_at?: Date | null;

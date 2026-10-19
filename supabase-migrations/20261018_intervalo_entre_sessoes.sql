@@ -1,0 +1,2 @@
+ALTER TABLE cronogramas
+  ADD COLUMN IF NOT EXISTS intervalo_entre_sessoes INTEGER NOT NULL DEFAULT 15;

@@ -15,6 +15,7 @@ interface ConfigCronograma {
   materias: Materia[];
   atividades_fixas: Array<{ nome: string; dias_semana: number[]; horario_inicio: string; horario_fim: string }>;
   tempo_max_sem_pausa: number;
+  intervalo_entre_sessoes?: 5 | 15;
   periodo_preferido: string;
   varias_materias_por_dia: boolean;
   criar_dia_revisao?: boolean;
@@ -62,52 +63,29 @@ function aplicarPesos(materias: Materia[], weeklyTargetSlots: number) {
     }))
     .sort((a, b) => b.peso - a.peso || a.nome.localeCompare(b.nome));
 
-  const targetSlots = Math.max(weeklyTargetSlots, 0);
-  const counts = new Map<string, number>();
+  const targetSlots = Math.max(0, Math.floor(weeklyTargetSlots));
+  const counts = new Map(weighted.map(item => [item.nome, 0]));
+  if (targetSlots === 0 || weighted.length === 0) return counts;
 
-  if (targetSlots === 0) {
-    for (const item of weighted) counts.set(item.nome, 0);
-    return counts;
+  let remaining = targetSlots;
+  if (targetSlots >= weighted.length) {
+    for (const item of weighted) counts.set(item.nome, 1);
+    remaining -= weighted.length;
   }
 
-  if (targetSlots < weighted.length) {
-    for (let i = 0; i < targetSlots; i += 1) {
-      const item = weighted[i % weighted.length];
-      counts.set(item.nome, (counts.get(item.nome) || 0) + 1);
-    }
-    return counts;
-  }
-
-  for (const item of weighted) counts.set(item.nome, 1);
-
-  const remaining = targetSlots - weighted.length;
-  const totalPeso = weighted.reduce((sum, item) => sum + item.peso, 0) || 1;
-  const distribution = weighted.map((item) => {
-    const exact = (item.peso / totalPeso) * remaining;
-    return {
-      nome: item.nome,
-      peso: item.peso,
-      exact,
-      base: Math.floor(exact),
-      frac: exact - Math.floor(exact),
-    };
-  });
-
-  let assigned = 0;
-  for (const item of distribution) {
-    counts.set(item.nome, (counts.get(item.nome) || 0) + item.base);
-    assigned += item.base;
-  }
-
-  let remainder = remaining - assigned;
-  const sorted = [...distribution].sort((a, b) => b.frac - a.frac || b.peso - a.peso || a.nome.localeCompare(b.nome));
-
-  while (remainder > 0) {
-    for (const item of sorted) {
-      if (remainder <= 0) break;
-      counts.set(item.nome, (counts.get(item.nome) || 0) + 1);
-      remainder -= 1;
-    }
+  while (remaining > 0) {
+    const next = weighted
+      .slice()
+      .sort((a, b) => {
+        const aCount = counts.get(a.nome) || 0;
+        const bCount = counts.get(b.nome) || 0;
+        return b.peso / (bCount + 1) - a.peso / (aCount + 1)
+          || b.peso - a.peso
+          || a.nome.localeCompare(b.nome);
+      })[0];
+    if (!next) break;
+    counts.set(next.nome, (counts.get(next.nome) || 0) + 1);
+    remaining -= 1;
   }
 
   return counts;
@@ -120,66 +98,8 @@ function calcularSomaPonderada(materias: Materia[], counts: Map<string, number>)
   }, 0);
 }
 
-function getDailySubjectLimit(
-  totalMaterias: number,
-  studyDaysLength: number,
-  poucasMateriasPorDia: boolean,
-  estrategiaPoucas: ConfigCronograma['estrategia_poucas'] = 'dividir_por_2',
-) {
-  if (poucasMateriasPorDia) {
-    if (estrategiaPoucas === 'dividir_por_2') {
-      return Math.max(1, Math.ceil(totalMaterias / 2));
-    }
-    return Math.max(1, Math.ceil(totalMaterias / Math.max(1, studyDaysLength)));
-  }
-
-  const baseLimit = Math.max(1, Math.ceil(totalMaterias / 2));
-  return Math.min(totalMaterias, baseLimit + (totalMaterias > 3 ? 1 : 0));
-}
-
-function buildDaySubjectPlan(
-  materias: Materia[],
-  targetCount: number,
-  previousSubjects: string[] | undefined,
-  subjectRemaining: Map<string, number>,
-) {
-  const previousSet = new Set(previousSubjects || []);
-  const ordered = materias
-    .slice()
-    .sort((a, b) => (subjectRemaining.get(b.nome) || 0) - (subjectRemaining.get(a.nome) || 0)
-      || getWeightValue(b.peso_prioridade) - getWeightValue(a.peso_prioridade)
-      || a.nome.localeCompare(b.nome));
-
-  const planejado = new Set<string>();
-  for (const materia of ordered) {
-    if (planejado.size >= targetCount) break;
-    if (!previousSet.has(materia.nome) && (subjectRemaining.get(materia.nome) || 0) > 0) {
-      planejado.add(materia.nome);
-    }
-  }
-
-  if (planejado.size < targetCount) {
-    for (const materia of ordered) {
-      if (planejado.size >= targetCount) break;
-      if ((subjectRemaining.get(materia.nome) || 0) > 0 && !planejado.has(materia.nome)) {
-        planejado.add(materia.nome);
-      }
-    }
-  }
-
-  return Array.from(planejado).slice(0, targetCount);
-}
-
-function calculateDailyTargetForLowLoad(
-  totalMaterias: number,
-  studyDaysLength: number,
-  estrategiaPoucas: ConfigCronograma['estrategia_poucas'] = 'dividir_por_2',
-) {
-  if (estrategiaPoucas === 'uniforme') {
-    return Math.max(1, Math.ceil(totalMaterias / Math.max(1, studyDaysLength)));
-  }
-
-  return Math.max(1, Math.ceil(totalMaterias / 2));
+function getDailySubjectLimit(totalMaterias: number) {
+  return Math.max(1, Math.floor(totalMaterias / 2));
 }
 
 function distributeSubjectSessions(materias: Materia[], targetSlots: number) {
@@ -631,83 +551,114 @@ function distributeWithAlternation(
   config: ConfigCronograma,
   studyDays: number[],
   slotsByDay: Map<number, Array<{ dia: number; inicio: number; fim: number }>>,
+  dailySubjectLimit: number,
   subjectCounts: Map<string, number>,
 ): SlotCronograma[] {
-  const sessions: SlotCronograma[] = [];
-  const remainingCounts = new Map<string, number>();
-  for (const item of config.materias) remainingCounts.set(item.nome, subjectCounts.get(item.nome) || 0);
-  const previousDaySubjects = new Map<number, string[]>();
-  
-  for (const dia of studyDays) {
-    const daySlots = slotsByDay.get(dia) || [];
-    const dayIndex = studyDays.indexOf(dia);
-    const previousSubjects = new Set(previousDaySubjects.get(studyDays[Math.max(0, dayIndex - 1)]) || []);
-    
-    // Sort subjects by: remaining count (descending), weight (descending), name (alphabetical)
-    const ordered = [...config.materias]
-      .slice()
+  const sessionCapacities = studyDays.map((dia) => (slotsByDay.get(dia) || []).length);
+  const distinctCapacities = sessionCapacities.map((capacity) =>
+    Math.min(capacity, dailySubjectLimit, config.materias.length));
+  const totalDistinctCapacity = distinctCapacities.reduce((sum, capacity) => sum + capacity, 0);
+  if (totalDistinctCapacity < config.materias.length) {
+    throw new Error(
+      `A capacidade disponível permite estudar apenas ${totalDistinctCapacity} matérias na semana, mas ${config.materias.length} foram selecionadas. Adicione dias ou horários de estudo.`,
+    );
+  }
+
+  const planByDay = studyDays.map(() => [] as string[]);
+  const priorityOrder = config.materias.slice().sort((a, b) =>
+    getWeightValue(b.peso_prioridade) - getWeightValue(a.peso_prioridade)
+    || a.nome.localeCompare(b.nome));
+
+  for (const materia of priorityOrder) {
+    const eligibleDays = distinctCapacities
+      .map((capacity, index) => ({ capacity, index }))
+      .filter(({ capacity, index }) => planByDay[index].length < capacity)
       .sort((a, b) => {
-        const aRemaining = remainingCounts.get(a.nome) || 0;
-        const bRemaining = remainingCounts.get(b.nome) || 0;
-        const aWeight = getWeightValue(a.peso_prioridade);
-        const bWeight = getWeightValue(b.peso_prioridade);
-        if (bRemaining !== aRemaining) return bRemaining - aRemaining;
-        if (bWeight !== aWeight) return bWeight - aWeight;
-        return a.nome.localeCompare(b.nome);
-      })
-      .map((materia) => materia.nome);
-    
-    const dailyTarget = Math.ceil(config.materias.length / 2);
-    const picked: string[] = [];
-    
-    // FIRST PASS: Try to avoid subjects from previous day
-    for (const nome of ordered) {
-      if ((remainingCounts.get(nome) || 0) <= 0) continue;
-      if (previousSubjects.has(nome)) continue; // Skip if was in previous day
-      if (picked.includes(nome)) continue;
-      if (picked.length >= dailyTarget) break;
-      picked.push(nome);
-      remainingCounts.set(nome, (remainingCounts.get(nome) || 0) - 1);
+        const aPreviousDayOverlap = planByDay[a.index - 1]?.includes(materia.nome) ? 1 : 0;
+        const bPreviousDayOverlap = planByDay[b.index - 1]?.includes(materia.nome) ? 1 : 0;
+        return aPreviousDayOverlap - bPreviousDayOverlap
+          || planByDay[a.index].length / a.capacity - planByDay[b.index].length / b.capacity
+          || a.index - b.index;
+      });
+    const dayIndex = eligibleDays[0]?.index;
+    if (dayIndex === undefined) {
+      throw new Error('Não foi possível distribuir todas as matérias nos horários disponíveis.');
     }
-    
-    // SECOND PASS: If still need subjects, allow repeating from previous day (fallback)
-    if (picked.length < dailyTarget) {
-      for (const nome of ordered) {
-        if ((remainingCounts.get(nome) || 0) <= 0) continue;
-        if (picked.includes(nome)) continue;
-        if (picked.length >= dailyTarget) break;
-        picked.push(nome);
-        remainingCounts.set(nome, (remainingCounts.get(nome) || 0) - 1);
+    planByDay[dayIndex].push(materia.nome);
+  }
+
+  const remainingCounts = new Map(subjectCounts);
+  const sessions: SlotCronograma[] = [];
+  for (let dayIndex = 0; dayIndex < studyDays.length; dayIndex += 1) {
+    const dia = studyDays[dayIndex];
+    const daySlots = slotsByDay.get(dia) || [];
+    const previousSubjects = new Set(planByDay[dayIndex - 1] || []);
+    const daySeeds = planByDay[dayIndex].slice().sort((a, b) =>
+      Number(previousSubjects.has(a)) - Number(previousSubjects.has(b))
+      || (subjectCounts.get(b) || 0) - (subjectCounts.get(a) || 0)
+      || a.localeCompare(b));
+    const daySubjects = [...daySeeds];
+    let seedIndex = 0;
+    let lastAssigned: string | undefined;
+
+    for (const slot of daySlots) {
+      let selected = daySeeds[seedIndex];
+      if (selected) {
+        seedIndex += 1;
+      } else {
+        const canAddDistinctSubject = daySubjects.length < distinctCapacities[dayIndex];
+        const newSubjectCandidates = canAddDistinctSubject
+          ? config.materias
+            .filter((materia) => !daySubjects.includes(materia.nome) && (remainingCounts.get(materia.nome) || 0) > 0)
+            .sort((a, b) =>
+              Number(previousSubjects.has(a.nome)) - Number(previousSubjects.has(b.nome))
+              || (remainingCounts.get(b.nome) || 0) - (remainingCounts.get(a.nome) || 0)
+              || getWeightValue(b.peso_prioridade) - getWeightValue(a.peso_prioridade)
+              || a.nome.localeCompare(b.nome))
+          : [];
+        selected = newSubjectCandidates[0]?.nome;
       }
-    }
-    
-    // Fill available slots with picked subjects
-    const finalPlan = picked.slice(0, Math.min(daySlots.length, dailyTarget));
-    for (let index = 0; index < finalPlan.length; index += 1) {
-      const slot = daySlots[index];
-      if (!slot) continue;
+
+      if (!selected) {
+        const availableToday = daySubjects.filter((nome) => (remainingCounts.get(nome) || 0) > 0);
+        const candidates = (availableToday.length > 0 ? availableToday : daySubjects).slice().sort((a, b) =>
+          (remainingCounts.get(b) || 0) - (remainingCounts.get(a) || 0)
+          || Number(a === lastAssigned) - Number(b === lastAssigned)
+          || Number(previousSubjects.has(a)) - Number(previousSubjects.has(b))
+          || getWeightValue(config.materias.find((materia) => materia.nome === b)?.peso_prioridade ?? 10)
+            - getWeightValue(config.materias.find((materia) => materia.nome === a)?.peso_prioridade ?? 10)
+          || a.localeCompare(b));
+        selected = candidates.find((nome) => nome !== lastAssigned) || candidates[0];
+      }
+      if (!selected) {
+        throw new Error(`Não foi possível selecionar uma matéria para o horário disponível no dia ${dia}.`);
+      }
+
+      if (!daySubjects.includes(selected)) daySubjects.push(selected);
+      if ((remainingCounts.get(selected) || 0) > 0) {
+        remainingCounts.set(selected, (remainingCounts.get(selected) || 0) - 1);
+      }
+      lastAssigned = selected;
+
       sessions.push({
-        materia: finalPlan[index],
+        materia: selected,
         dia_semana: dia,
         horario_inicio: minutesToTime(slot.inicio),
         horario_fim: minutesToTime(slot.fim),
         tipo: 'estudo',
       });
     }
-    
-    // Track subjects for this day (for next iteration)
-    previousDaySubjects.set(dia, [...finalPlan]);
   }
-  
+
   return sessions;
 }
 function scheduleReviewDay(
   dia: number,
   segments: Array<{ dia: number; inicio: number; fim: number }>,
   materias: Materia[],
+  breakDuration: number,
 ) {
   const reviewSessionDuration = 25;
-  const breakDuration = 15;
   const reviewSlots = buildStudySlots(segments, reviewSessionDuration, breakDuration).slice(0, materias.length);
   return reviewSlots.map((slot, index) => ({
     materia: materias[index].nome,
@@ -731,7 +682,7 @@ export function gerarCronograma(config: ConfigCronograma): SlotCronograma[] {
   const wakeBase = timeToMinutes(config.horario_acordar) + 30;
   const sleepBase = timeToMinutes(config.horario_dormir) - 60;
   const sessionDuration = Math.min(config.tempo_max_sem_pausa, 50);
-  const breakDuration = 15;
+  const breakDuration = config.intervalo_entre_sessoes ?? 15;
 
   const reviewDay = config.criar_dia_revisao && dias.length > 0
     ? (config.dia_revisao !== undefined && config.dia_revisao !== null && dias.includes(config.dia_revisao)
@@ -768,13 +719,13 @@ export function gerarCronograma(config: ConfigCronograma): SlotCronograma[] {
   }
 
   const fewSubjectsMode = !config.varias_materias_por_dia;
-  const daySubjectLimit = getDailySubjectLimit(config.materias.length, studyDays.length, fewSubjectsMode, config.estrategia_poucas);
-  const dailyTarget = fewSubjectsMode
-    ? calculateDailyTargetForLowLoad(config.materias.length, studyDays.length, config.estrategia_poucas)
-    : daySubjectLimit;
-
-  const slotTarget = fewSubjectsMode ? Math.max(1, dailyTarget * Math.max(1, studyDays.length)) : totalSlots;
-  const subjectCounts = distributeSubjectSessions(config.materias, slotTarget);
+  if (!fewSubjectsMode && totalSlots < config.materias.length) {
+    throw new Error(
+      `A capacidade disponível permite ${totalSlots} sessões na semana, mas ${config.materias.length} matérias foram selecionadas. Adicione horários de estudo.`,
+    );
+  }
+  const dailySubjectLimit = getDailySubjectLimit(config.materias.length);
+  const subjectCounts = distributeSubjectSessions(config.materias, totalSlots);
 
   if (subjectCounts.size === 0) {
     return [];
@@ -785,7 +736,7 @@ export function gerarCronograma(config: ConfigCronograma): SlotCronograma[] {
   if (config.varias_materias_por_dia) {
     sessions.push(...distributeWithBalance(config, studyDays, slotsByDay, subjectCounts));
   } else {
-    sessions.push(...distributeWithAlternation(config, studyDays, slotsByDay, subjectCounts));
+    sessions.push(...distributeWithAlternation(config, studyDays, slotsByDay, dailySubjectLimit, subjectCounts));
   }
 
   if (reviewDay !== null) {
@@ -793,12 +744,9 @@ export function gerarCronograma(config: ConfigCronograma): SlotCronograma[] {
       .filter((atividade) => atividade.dias_semana.includes(reviewDay))
       .map((atividade) => ({ inicio: timeToMinutes(atividade.horario_inicio), fim: timeToMinutes(atividade.horario_fim) }));
     const reviewSegments = buildAvailableSegments(reviewDay, wakeBase, sleepBase, fixedForReview);
-    const reviewSessions = scheduleReviewDay(reviewDay, reviewSegments, config.materias);
+    const reviewSessions = scheduleReviewDay(reviewDay, reviewSegments, config.materias, breakDuration);
     sessions.push(...reviewSessions);
   }
 
   return sessions;
 }
-
-
-

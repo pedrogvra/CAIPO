@@ -45,6 +45,7 @@ export const cronogramas = pgTable('cronogramas', {
   dias_disponiveis: jsonb('dias_disponiveis'), // array of 0-6 (sun-sat)
   periodo_preferido: text('periodo_preferido'), // 'manha'|'tarde'|'noite'
   tempo_max_sem_pausa: integer('tempo_max_sem_pausa').default(50),
+  intervalo_entre_sessoes: integer('intervalo_entre_sessoes').notNull().default(15),
   varias_materias_por_dia: boolean('varias_materias_por_dia').default(true),
   created_at: timestamp('created_at').defaultNow(),
   updated_at: timestamp('updated_at').defaultNow(),

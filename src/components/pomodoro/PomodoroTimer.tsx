@@ -144,9 +144,10 @@ export default function PomodoroTimer() {
     fetch('/api/cronograma').then((r) => r.json()).then((d) => {
       if (d.cronograma) {
         const sessoes = Array.isArray(d.cronograma?.sessoes)
-          ? (d.cronograma.sessoes as Array<{ materia?: string | null }>)
+          ? (d.cronograma.sessoes as Array<{ materia?: string | null; tipo?: string | null }>)
           : [];
         const nomesMaterias = sessoes
+          .filter((s) => s.tipo == null || s.tipo === 'estudo' || s.tipo === 'revisao')
           .map((s) => s.materia)
           .filter((nome: unknown): nome is string => typeof nome === 'string' && nome.trim().length > 0);
         setMaterias(Array.from(new Set(nomesMaterias)).map((nome) => ({ id: nome, nome })));

@@ -47,6 +47,9 @@ CREATE TABLE IF NOT EXISTS cronogramas (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE cronogramas
+  ADD COLUMN IF NOT EXISTS intervalo_entre_sessoes INTEGER NOT NULL DEFAULT 15;
+
 CREATE TABLE IF NOT EXISTS cronograma_sessoes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   cronograma_id UUID NOT NULL REFERENCES cronogramas(id) ON DELETE CASCADE,

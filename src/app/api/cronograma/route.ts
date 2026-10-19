@@ -94,7 +94,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { nome, horario_acordar, horario_dormir, dias_disponiveis, periodo_preferido,
-      tempo_max_sem_pausa, varias_materias_por_dia, sessoes } = body;
+      tempo_max_sem_pausa, intervalo_entre_sessoes, varias_materias_por_dia, sessoes } = body;
+    const intervaloEntreSessoes = intervalo_entre_sessoes === 5 ? 5 : 15;
 
     const { isConfigured } = getSupabaseConnectionStatus();
     if (isConfigured) {
@@ -108,6 +109,7 @@ export async function POST(req: NextRequest) {
         dias_disponiveis,
         periodo_preferido,
         tempo_max_sem_pausa,
+        intervalo_entre_sessoes: intervaloEntreSessoes,
         varias_materias_por_dia,
         updated_at: new Date().toISOString(),
       }, {
@@ -149,6 +151,7 @@ export async function POST(req: NextRequest) {
       dias_disponiveis,
       periodo_preferido,
       tempo_max_sem_pausa,
+      intervalo_entre_sessoes: intervaloEntreSessoes,
       varias_materias_por_dia,
     }).returning();
 
