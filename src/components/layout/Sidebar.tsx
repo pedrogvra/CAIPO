@@ -25,7 +25,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [paginaRolada, setPaginaRolada] = useState(false);
 
-  const rotasSemSidebar = ['/login', '/cadastro', '/recuperar-senha', '/onboarding', '/questionario', '/feedback'];
+  const rotasSemSidebar = ['/login', '/cadastro', '/recuperar-senha', '/redefinir-senha', '/onboarding', '/questionario', '/feedback'];
   const shouldRenderSidebar = !rotasSemSidebar.includes(pathname);
 
   useEffect(() => {

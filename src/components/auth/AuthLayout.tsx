@@ -221,6 +221,9 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         }
 
         .auth-form-button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
           width: 100%;
           min-height: 56px;
           border-radius: 18px;
@@ -231,6 +234,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           font-weight: 800;
           cursor: pointer;
           box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+          text-decoration: none;
         }
 
         .auth-form-button:disabled {
