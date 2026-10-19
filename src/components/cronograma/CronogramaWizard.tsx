@@ -294,7 +294,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <h3 style={{ color: 'white', fontSize: 20, fontWeight: 600, margin: 0 }}>Atividades Fixas (opcional)</h3>
             <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 600, margin: 0 }}>
-              Informe aulas, esportes ou compromissos que já têm horário definido.
+              Informe aulas, esportes ou compromissos que já têm horário definido. Só é possível marcar dias disponíveis para estudo.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -386,7 +386,8 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
 
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {DIAS_SEMANA.map((d, i) => (
-                  <button key={i} onClick={() => {
+                  <button key={i} type="button" disabled={!diasDisponiveis.includes(i)} title={!diasDisponiveis.includes(i) ? 'Selecione primeiro este dia como disponível para estudo.' : undefined} onClick={() => {
+                    if (!diasDisponiveis.includes(i)) return;
                     const dias = novaAtividade.dias_semana;
                     const novosDias = dias.includes(i) ? dias.filter(x => x !== i) : [...dias, i];
                     setNovaAtividade(p => ({ ...p, dias_semana: novosDias }));
@@ -394,10 +395,10 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
                   }}
                     style={{
                       padding: '6px 12px', borderRadius: 6, border: '2px solid',
-                      borderColor: novaAtividade.dias_semana.includes(i) ? '#FFDE68' : 'rgba(255,255,255,0.3)',
+                      borderColor: !diasDisponiveis.includes(i) ? 'rgba(255,255,255,0.12)' : novaAtividade.dias_semana.includes(i) ? '#FFDE68' : 'rgba(255,255,255,0.3)',
                       background: novaAtividade.dias_semana.includes(i) ? 'rgba(255,222,104,0.2)' : 'transparent',
-                      color: novaAtividade.dias_semana.includes(i) ? '#FFDE68' : 'white',
-                      fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins',
+                      color: !diasDisponiveis.includes(i) ? 'rgba(255,255,255,0.35)' : novaAtividade.dias_semana.includes(i) ? '#FFDE68' : 'white',
+                      fontWeight: 600, fontSize: 13, cursor: !diasDisponiveis.includes(i) ? 'not-allowed' : 'pointer', fontFamily: 'Poppins',
                     }}>
                     {d}
                   </button>
