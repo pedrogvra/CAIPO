@@ -7,7 +7,7 @@ import HeaderUsuario from '@/components/layout/HeaderUsuario';
 import CronogramaWizard from '@/components/cronograma/CronogramaWizard';
 import Image from 'next/image';
 import type { CronogramaCompleto, Materia } from '@/types/cronograma';
-import plusIcon from '../../../assets/icons/mais.svg';
+import menuIcon from '../../../assets/icons/menu-hamburguer.svg';
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const HORAS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -18,6 +18,7 @@ export default function CronogramaPage() {
   const [cronograma, setCronograma] = useState<CronogramaCompleto | null>(null);
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [mostrando, setMostrando] = useState(false);
+  const [menuAcoesAberto, setMenuAcoesAberto] = useState(false);
   const [confirmandoNovo, setConfirmandoNovo] = useState(false);
   const [modoWizard, setModoWizard] = useState<'novo' | 'editar'>('novo');
   const [loadingData, setLoadingData] = useState(true);
@@ -175,20 +176,19 @@ export default function CronogramaPage() {
             )}
           </div>
 
-          {/* Ações do cronograma */}
-          <div style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 12, marginTop: 16, position: 'sticky', bottom: 20, zIndex: 20 }}>
+          {/* Menu de ações do cronograma */}
+          <div style={{ alignSelf: 'flex-end', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, marginTop: 16, position: 'sticky', bottom: 20, zIndex: 20 }}>
             <button
-              onClick={() => {
-                setModoWizard(cronograma ? 'editar' : 'novo');
-                setMostrando(true);
-              }}
-              aria-label={cronograma ? 'Editar cronograma' : 'Criar cronograma'}
+              type="button"
+              onClick={() => setMenuAcoesAberto(aberto => !aberto)}
+              aria-label={menuAcoesAberto ? 'Fechar ações do cronograma' : 'Abrir ações do cronograma'}
+              aria-expanded={menuAcoesAberto}
+              aria-controls="cronograma-menu-acoes"
               disabled={loadingData}
               style={{
-                minWidth: cronograma ? 190 : 100,
-                height: cronograma ? 58 : 100,
-                padding: cronograma ? '0 24px' : 0,
-                borderRadius: cronograma ? 30 : '50%',
+                width: 76,
+                height: 76,
+                borderRadius: '50%',
                 background: '#FFDE68',
                 boxShadow: '6px 6px 10.6px rgba(0, 0, 0, 0.25)',
                 border: 'none',
@@ -199,33 +199,79 @@ export default function CronogramaPage() {
                 justifyContent: 'center',
               }}
             >
-              {cronograma ? (
-                <span style={{ color: '#091541', fontSize: 17, fontWeight: 700, fontFamily: 'Poppins' }}>Editar cronograma</span>
-              ) : (
-                <Image src={plusIcon} alt="" width={50} height={50} style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(34%) saturate(1367%) hue-rotate(183deg) brightness(96%) contrast(99%)' }} />
-              )}
+              <Image
+                src={menuIcon}
+                alt=""
+                width={34}
+                height={34}
+                style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(34%) saturate(1367%) hue-rotate(183deg) brightness(96%) contrast(99%)' }}
+              />
             </button>
-            {cronograma && (
-              <button
-                type="button"
-                onClick={() => setConfirmandoNovo(true)}
-                disabled={loadingData}
+            {menuAcoesAberto && (
+              <div
+                id="cronograma-menu-acoes"
+                role="group"
+                aria-label="Ações do cronograma"
                 style={{
-                  minHeight: 58,
-                  padding: '0 20px',
-                  borderRadius: 30,
-                  background: 'transparent',
-                  border: '2px solid #FFDE68',
-                  color: '#FFDE68',
-                  fontSize: 15,
-                  fontWeight: 700,
-                  fontFamily: 'Poppins',
-                  cursor: loadingData ? 'wait' : 'pointer',
-                  opacity: loadingData ? 0.7 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  width: 'min(260px, calc(100vw - 48px))',
+                  padding: 12,
+                  borderRadius: 16,
+                  background: 'linear-gradient(156deg, #2864B8 0%, #091541 100%)',
+                  border: '1px solid rgba(255,222,104,0.55)',
+                  boxShadow: '0 10px 28px rgba(0,0,0,0.3)',
                 }}
               >
-                Criar outro cronograma
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModoWizard(cronograma ? 'editar' : 'novo');
+                    setMenuAcoesAberto(false);
+                    setMostrando(true);
+                  }}
+                  style={{
+                    minHeight: 48,
+                    padding: '0 14px',
+                    border: 0,
+                    borderRadius: 10,
+                    background: '#FFDE68',
+                    color: '#091541',
+                    fontSize: 15,
+                    fontWeight: 700,
+                    fontFamily: 'Poppins',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {cronograma ? 'Editar cronograma' : 'Criar cronograma'}
+                </button>
+                {cronograma && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuAcoesAberto(false);
+                      setConfirmandoNovo(true);
+                    }}
+                    style={{
+                      minHeight: 48,
+                      padding: '0 14px',
+                      border: '1px solid rgba(255,222,104,0.75)',
+                      borderRadius: 10,
+                      background: 'transparent',
+                      color: '#FFDE68',
+                      fontSize: 15,
+                      fontWeight: 700,
+                      fontFamily: 'Poppins',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Criar outro cronograma
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
