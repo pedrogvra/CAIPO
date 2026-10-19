@@ -68,9 +68,12 @@ export const DIAGNOSTICO_PERGUNTAS: DiagnosticoPergunta[] = [
   },
 ];
 
-export function calcularPontuacao(respostas: Record<string, string>) {
+export function calcularPontuacao(respostas: Record<string, string | string[]>) {
   return DIAGNOSTICO_PERGUNTAS.reduce((total, pergunta) => {
     const resposta = respostas[pergunta.id];
+    if (Array.isArray(resposta)) {
+      return total + Math.max(0, ...resposta.map((opcao) => pergunta.pontos[opcao] ?? 0));
+    }
     return total + (pergunta.pontos[resposta] ?? 0);
   }, 0);
 }

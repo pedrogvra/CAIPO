@@ -7,6 +7,7 @@ import Image from 'next/image';
 import AuthLayout from '@/components/auth/AuthLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { MAX_CARACTERES_NOME, contarCaracteresNome, validarNome } from '@/lib/validacaoNome';
+import { validarSenha } from '@/lib/validacaoSenha';
 import eyeOpenIcon from '../../../../assets/icons/olho.svg';
 import eyeClosedIcon from '../../../../assets/icons/olhos-cruzados.svg';
 
@@ -39,8 +40,9 @@ export default function CadastroPage() {
       setErro('E-mail inválido.');
       return;
     }
-    if (senha.length < 6) {
-      setErro('A senha deve ter pelo menos 6 caracteres.');
+    const erroSenha = validarSenha(senha);
+    if (erroSenha) {
+      setErro(erroSenha);
       return;
     }
     if (senha !== confirmar_senha) {
@@ -129,6 +131,7 @@ export default function CadastroPage() {
               onChange={e => setSenha(e.target.value)}
               placeholder="Digite sua senha"
               style={{ paddingRight: 42 }}
+              aria-describedby="senha-requisitos"
             />
             <button
               type="button"
@@ -156,6 +159,9 @@ export default function CadastroPage() {
                 style={{ filter: 'brightness(0) saturate(100%) invert(29%) sepia(37%) saturate(832%) hue-rotate(180deg) brightness(95%) contrast(90%)' }}
               />
             </button>
+          </div>
+          <div id="senha-requisitos" style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, fontFamily: 'Poppins', marginTop: 4 }}>
+            Mínimo de 8 caracteres, com pelo menos uma letra e um dígito.
           </div>
         </div>
 

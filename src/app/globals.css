@@ -48,6 +48,17 @@ body {
   background: #091541;
 }
 
+.pomodoro-config-number {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.pomodoro-config-number::-webkit-inner-spin-button,
+.pomodoro-config-number::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 body::-webkit-scrollbar {
   width: 10px;
   height: 10px;

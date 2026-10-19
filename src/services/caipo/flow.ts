@@ -1,6 +1,6 @@
 import { ConversationResponse, EstadoAtual } from './types';
 import { AREA_OPCOES, DESEMPENHO_ESCOLAR_OPTIONS, getSerieHistoricoMensagem, allowsMultipleAreas, OBJETIVO_OPTIONS, SERIE_OPTIONS } from './dadosIniciais';
-import { DIAGNOSTICO_PERGUNTAS, classificarDiagnostico, buildResumoDiagnostico } from './diagnosticoInicial';
+import { DIAGNOSTICO_PERGUNTAS, calcularPontuacao, classificarDiagnostico, buildResumoDiagnostico } from './diagnosticoInicial';
 import { ROTINA_ATRAPALHA_OPCOES, ROTINA_NAO_OPCOES } from './rotina';
 import { CHECKLIST_OPCOES } from './pomodoro';
 import {
@@ -102,7 +102,7 @@ function getNextDiagnosticoStep(estado: EstadoAtual): ConversationResponse {
     return {
       etapa: 'diagnostico_inicial',
       mensagem,
-      tipo_input: 'single_select',
+      tipo_input: pergunta.id === 'q4' ? 'multi_select' : 'single_select',
       opcoes: pergunta.opcoes,
       campo_salvo: 'diagnostico_inicial',
       pontua: true,
@@ -111,10 +111,7 @@ function getNextDiagnosticoStep(estado: EstadoAtual): ConversationResponse {
     };
   }
 
-  const total = DIAGNOSTICO_PERGUNTAS.reduce((sum, pergunta) => {
-    const resposta = respostas[pergunta.id];
-    return sum + (pergunta.pontos[resposta] ?? 0);
-  }, 0);
+  const total = calcularPontuacao(respostas);
   const classificacao = classificarDiagnostico(total);
 
   return {

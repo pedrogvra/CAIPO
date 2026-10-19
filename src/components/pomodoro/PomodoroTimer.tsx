@@ -963,6 +963,7 @@ export default function PomodoroTimer() {
                     {campo.label}
                   </span>
                   <input
+                    className="pomodoro-config-number"
                     type="number"
                     min={
                       campo.modo === 'focus'

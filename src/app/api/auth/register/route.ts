@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createToken } from '@/lib/auth';
 import { getSupabaseConnectionStatus, supabaseInsert } from '@/lib/supabase-data';
 import { validarNome } from '@/lib/validacaoNome';
+import { validarSenha } from '@/lib/validacaoSenha';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,11 +18,15 @@ export async function POST(req: NextRequest) {
     if (erroNome) {
       return NextResponse.json({ error: erroNome }, { status: 400 });
     }
+    if (typeof senha !== 'string' || typeof confirmar_senha !== 'string') {
+      return NextResponse.json({ error: 'Informe uma senha válida.' }, { status: 400 });
+    }
     if (senha !== confirmar_senha) {
       return NextResponse.json({ error: 'As senhas não coincidem.' }, { status: 400 });
     }
-    if (senha.length < 6) {
-      return NextResponse.json({ error: 'A senha deve ter pelo menos 6 caracteres.' }, { status: 400 });
+    const erroSenha = validarSenha(senha);
+    if (erroSenha) {
+      return NextResponse.json({ error: erroSenha }, { status: 400 });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();

@@ -19,14 +19,14 @@ interface AtividadeFixa {
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const CORES_MATERIAS = ['#1E55A8', '#5395CF', '#0C3067', '#091541', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
 const MATERIAS_SUGERIDAS = ['Matemática', 'Português', 'História', 'Geografia', 'Física', 'Química', 'Biologia', 'Inglês'];
+const LIMITE_CARACTERES_NOME = 50;
 const ATIVIDADES_SUGERIDAS: Record<string, string[]> = {
   'Refeição': ['Café da manhã', 'Almoço', 'Café da tarde', 'Jantar'],
   'Aula / Escola': ['Aula de Inglês', 'Aula de Matemática', 'Aula de História', 'Aula de Português'],
-  'Trabalho': ['Trabalho', 'Reunião'],
   'Esporte / Treino': ['Treino de Academia', 'Treino de Futebol', 'Yoga', 'Corrida'],
-  'Transporte / Deslocamento': ['Deslocamento para trabalho', 'Deslocamento para escola'],
+  'Transporte / Deslocamento': ['Deslocamento para a escola'],
   'Lazer / Pessoal': ['Tempo livre', 'Lazer', 'Descanso'],
-  'Outro': ['Outro'],
+  'Outro': [],
 };
 
 export default function CronogramaWizard({ onClose, onSuccess }: Props) {
@@ -42,6 +42,10 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
   // Etapa 2 - Atividades Fixas
   const [atividadesFixas, setAtividadesFixas] = useState<AtividadeFixa[]>([]);
   const [novaAtividade, setNovaAtividade] = useState({ nome: '', dias_semana: [] as number[], horario_inicio: '08:00', horario_fim: '09:00' });
+  const [atividadeEditando, setAtividadeEditando] = useState<number | null>(null);
+  const [categoriaAberta, setCategoriaAberta] = useState(false);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState('');
+  const [tentouAdicionarSemDia, setTentouAdicionarSemDia] = useState(false);
 
   // Etapa 3 - Matérias
   const [materias, setMaterias] = useState<Materia[]>([]);
@@ -58,18 +62,55 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
   };
 
   const adicionarAtividade = () => {
-    if (!novaAtividade.nome) return;
-    setAtividadesFixas(prev => [...prev, { ...novaAtividade }]);
+    const nome = novaAtividade.nome.slice(0, LIMITE_CARACTERES_NOME);
+    if (!nome.trim()) return;
+    if (novaAtividade.dias_semana.length === 0) {
+      setTentouAdicionarSemDia(true);
+      return;
+    }
+    const atividade = { ...novaAtividade, nome };
+    if (atividadeEditando === null) {
+      setAtividadesFixas(prev => [...prev, atividade]);
+    } else {
+      setAtividadesFixas(prev => prev.map((atividade, index) => (
+        index === atividadeEditando ? { ...novaAtividade, nome } : atividade
+      )));
+      setAtividadeEditando(null);
+    }
+    setTentouAdicionarSemDia(false);
     setNovaAtividade({ nome: '', dias_semana: [], horario_inicio: '08:00', horario_fim: '09:00' });
   };
 
+  const editarAtividade = (index: number) => {
+    const atividade = atividadesFixas[index];
+    if (!atividade) return;
+    setNovaAtividade({ ...atividade, dias_semana: [...atividade.dias_semana] });
+    setAtividadeEditando(index);
+    setTentouAdicionarSemDia(false);
+  };
+
+  const cancelarEdicaoAtividade = () => {
+    setAtividadeEditando(null);
+    setNovaAtividade({ nome: '', dias_semana: [], horario_inicio: '08:00', horario_fim: '09:00' });
+    setTentouAdicionarSemDia(false);
+  };
+
+  const selecionarCategoria = (categoria: string) => {
+    setCategoriaSelecionada(categoria);
+    const sugestao = ATIVIDADES_SUGERIDAS[categoria]?.[0];
+    setNovaAtividade(atividade => ({ ...atividade, nome: sugestao ?? '' }));
+    setCategoriaAberta(false);
+  };
+
   const adicionarMateria = () => {
-    if (!novaMateria.nome) return;
-    if (materias.some(m => m.nome === novaMateria.nome)) return;
+    const nome = novaMateria.nome.slice(0, LIMITE_CARACTERES_NOME).trim();
+    if (!nome) return;
+    if (materias.some(m => m.nome === nome)) return;
     setMaterias(prev => [...prev, {
       id: 'temp-' + Math.random().toString(),
       usuario_id: '',
       ...novaMateria,
+      nome,
     }]);
     setNovaMateria({ nome: '', peso_prioridade: 10, cor: CORES_MATERIAS[materias.length % CORES_MATERIAS.length] });
   };
@@ -161,15 +202,21 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
           display: none;
         }
       `}</style>
-      <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1100, padding: 24, fontFamily: 'Poppins',
-        overflowY: 'auto',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-      }} className="cronograma-wizard-scroll cronograma-wizard-overlay">
-        <div style={{
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1100, padding: 24, fontFamily: 'Poppins',
+          overflowY: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}
+        className="cronograma-wizard-scroll cronograma-wizard-overlay"
+      >
+        <div
+          onClick={event => event.stopPropagation()}
+          style={{
           width: '100%', maxWidth: 600,
           maxHeight: 'calc(100dvh - 48px)',
           overflowY: 'auto',
@@ -178,7 +225,9 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
           background: 'linear-gradient(156deg, #1E55A8 0%, #091541 100%)',
           borderRadius: 25, padding: 32,
           boxShadow: '6px 6px 20px rgba(0, 0, 0, 0.5)',
-        }} className="cronograma-wizard-scroll cronograma-wizard-card">
+          }}
+          className="cronograma-wizard-scroll cronograma-wizard-card"
+        >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 className="cronograma-wizard-title" style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, margin: 0 }}>
@@ -242,51 +291,99 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <select
-                  onChange={e => {
-                    const categoria = e.target.value;
-                    if (categoria && ATIVIDADES_SUGERIDAS[categoria]?.length > 0) {
-                      setNovaAtividade(p => ({ ...p, nome: ATIVIDADES_SUGERIDAS[categoria][0] }));
-                    }
-                  }}
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={categoriaAberta}
+                  onClick={() => setCategoriaAberta(aberta => !aberta)}
                   style={{
                     ...inputStyle,
-                    flex: 1,
+                    width: '100%',
                     height: 44,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     cursor: 'pointer',
-                    appearance: 'none',
-                    paddingRight: 40,
-                    backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%278%27 viewBox=%270 0 12 8%27%3E%3Cpath fill=%27%23091541%27 d=%27M1 1l5 5 5-5%27/%3E%3C/svg%3E")',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 14px center',
+                    textAlign: 'left',
                   }}
-                  defaultValue=""
                 >
-                  <option value="">📋 Selecionar categoria...</option>
-                  {Object.keys(ATIVIDADES_SUGERIDAS).map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                  <span>{categoriaSelecionada ? `📋 ${categoriaSelecionada}` : '📋 Selecionar categoria...'}</span>
+                  <span aria-hidden="true" style={{ fontSize: 12 }}>{categoriaAberta ? '▲' : '▼'}</span>
+                </button>
+                {categoriaAberta && (
+                  <div
+                    role="listbox"
+                    aria-label="Categorias de atividade"
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      left: 0,
+                      right: 0,
+                      zIndex: 5,
+                      maxHeight: 220,
+                      overflowY: 'auto',
+                      padding: 6,
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,222,104,0.45)',
+                      background: 'linear-gradient(156deg, #1E55A8 0%, #091541 100%)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    {Object.keys(ATIVIDADES_SUGERIDAS).map(categoria => (
+                      <button
+                        key={categoria}
+                        type="button"
+                        role="option"
+                        aria-selected={categoriaSelecionada === categoria}
+                        onClick={() => selecionarCategoria(categoria)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: 'none',
+                          borderRadius: 8,
+                          background: categoriaSelecionada === categoria ? 'rgba(255,222,104,0.18)' : 'transparent',
+                          color: categoriaSelecionada === categoria ? '#FFDE68' : 'white',
+                          fontSize: 14,
+                          fontWeight: 600,
+                          fontFamily: 'Poppins',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={event => {
+                          event.currentTarget.style.background = 'rgba(255,222,104,0.18)';
+                        }}
+                        onMouseLeave={event => {
+                          event.currentTarget.style.background = categoriaSelecionada === categoria ? 'rgba(255,222,104,0.18)' : 'transparent';
+                        }}
+                      >
+                        {categoria}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <input
                   placeholder="Nome da atividade"
                   value={novaAtividade.nome}
-                  onChange={e => setNovaAtividade(p => ({ ...p, nome: e.target.value }))}
+                  maxLength={LIMITE_CARACTERES_NOME}
+                  onChange={e => setNovaAtividade(p => ({ ...p, nome: e.target.value.slice(0, LIMITE_CARACTERES_NOME) }))}
                   style={{ ...inputStyle, width: '100%', height: 44 }}
                 />
+                <span style={{ alignSelf: 'flex-end', color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: '16px' }}>
+                  {novaAtividade.nome.length}/{LIMITE_CARACTERES_NOME}
+                </span>
               </div>
 
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {DIAS_SEMANA.map((d, i) => (
                   <button key={i} onClick={() => {
                     const dias = novaAtividade.dias_semana;
-                    setNovaAtividade(p => ({
-                      ...p,
-                      dias_semana: dias.includes(i) ? dias.filter(x => x !== i) : [...dias, i]
-                    }));
+                    const novosDias = dias.includes(i) ? dias.filter(x => x !== i) : [...dias, i];
+                    setNovaAtividade(p => ({ ...p, dias_semana: novosDias }));
+                    if (novosDias.length > 0) setTentouAdicionarSemDia(false);
                   }}
                     style={{
                       padding: '6px 12px', borderRadius: 6, border: '2px solid',
@@ -315,14 +412,37 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
                 </div>
               </div>
 
-              <button onClick={adicionarAtividade}
+              {tentouAdicionarSemDia && novaAtividade.dias_semana.length === 0 && (
+                <span style={{ color: '#FFDE68', fontSize: 13, fontWeight: 600 }}>
+                  Marque pelo menos um dia para adicionar a atividade.
+                </span>
+              )}
+              <button
+                onClick={adicionarAtividade}
+                disabled={!novaAtividade.nome.trim()}
                 style={{
                   padding: '10px', borderRadius: 8, border: '2px dashed rgba(255,255,255,0.4)',
-                  background: 'transparent', color: 'white', fontSize: 15, fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'Poppins',
+                  background: 'transparent',
+                  color: !novaAtividade.nome.trim() ? 'rgba(255,255,255,0.45)' : 'white',
+                  fontSize: 15, fontWeight: 600,
+                  cursor: !novaAtividade.nome.trim() ? 'not-allowed' : 'pointer',
+                  fontFamily: 'Poppins',
                 }}>
-                + Adicionar atividade
+                {atividadeEditando === null ? '+ Adicionar atividade' : 'Salvar alterações'}
               </button>
+              {atividadeEditando !== null && (
+                <button
+                  type="button"
+                  onClick={cancelarEdicaoAtividade}
+                  style={{
+                    padding: '8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.3)',
+                    background: 'transparent', color: 'rgba(255,255,255,0.8)', fontSize: 14,
+                    fontWeight: 600, cursor: 'pointer', fontFamily: 'Poppins',
+                  }}
+                >
+                  Cancelar edição
+                </button>
+              )}
             </div>
 
             {atividadesFixas.length > 0 && (
@@ -330,14 +450,36 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
                 <div style={{ color: '#FFDE68', fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Adicionadas:</div>
                 {atividadesFixas.map((a, i) => (
                   <div key={i} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
                     background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 12px', marginBottom: 6,
                   }}>
-                    <span style={{ color: 'white', fontSize: 14, fontWeight: 600 }}>
-                      {a.nome} – {a.horario_inicio} às {a.horario_fim}
-                    </span>
-                    <button onClick={() => setAtividadesFixas(prev => prev.filter((_, j) => j !== i))}
-                      style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 18 }}>×</button>
+                    <div style={{ color: 'white', fontSize: 14, fontWeight: 600, minWidth: 0 }}>
+                      <div>{a.nome} – {a.horario_inicio} às {a.horario_fim}</div>
+                      <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 }}>
+                        {a.dias_semana.length > 0 ? a.dias_semana.map(dia => DIAS_SEMANA[dia]).join(', ') : 'Sem dias selecionados'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => editarAtividade(i)}
+                        style={{ background: 'none', border: 'none', color: '#FFDE68', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Poppins' }}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Remover ${a.nome}`}
+                        onClick={() => {
+                          setAtividadesFixas(prev => prev.filter((_, j) => j !== i));
+                          if (atividadeEditando === i) cancelarEdicaoAtividade();
+                          else if (atividadeEditando !== null && atividadeEditando > i) setAtividadeEditando(atividadeEditando - 1);
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 18 }}
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -372,9 +514,18 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <input placeholder="Outra matéria" value={novaMateria.nome}
-                onChange={e => setNovaMateria(p => ({ ...p, nome: e.target.value }))}
-                style={{ ...inputStyle, flex: 1, height: 40 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <input
+                  placeholder="Outra matéria"
+                  value={novaMateria.nome}
+                  maxLength={LIMITE_CARACTERES_NOME}
+                  onChange={e => setNovaMateria(p => ({ ...p, nome: e.target.value.slice(0, LIMITE_CARACTERES_NOME) }))}
+                  style={{ ...inputStyle, width: '100%', height: 40 }}
+                />
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, textAlign: 'right', marginTop: 2 }}>
+                  {novaMateria.nome.length}/{LIMITE_CARACTERES_NOME}
+                </div>
+              </div>
               <button onClick={adicionarMateria}
                 style={{
                   padding: '0 16px', borderRadius: 8, border: 'none',

@@ -105,7 +105,7 @@ function updateEstadoAtualWithAnswer(
     const diagnostico = { ...(nextState.diagnostico_inicial || { respostas: {} }) };
     diagnostico.respostas = { ...(diagnostico.respostas || {}) };
     const questionId = getCurrentDiagnosticoId(nextState);
-    if (questionId && typeof value === 'string') {
+    if (questionId && (typeof value === 'string' || Array.isArray(value))) {
       diagnostico.respostas[questionId] = value;
     }
     return { ...nextState, diagnostico_inicial: diagnostico };
@@ -264,10 +264,15 @@ export default function QuestionarioPage() {
 
     try {
       const answerValue = getAnswerValue();
+      const { questionario_historico: historicoAtual = [], ...estadoAnterior } = estadoAtual;
       const nextState = updateEstadoAtualWithAnswer(conversation, answerValue, estadoAtual);
       if (nextState.salvo_para_depois) {
         delete nextState.salvo_para_depois;
       }
+      nextState.questionario_historico = [
+        ...historicoAtual,
+        { estado: estadoAnterior, conversation, resposta: answerValue },
+      ];
       const nextConversation = await fetchConversation(nextState);
       const concluded = nextConversation.etapa === 'feedback_pendente' || nextConversation.etapa === 'finalizado';
 
@@ -278,10 +283,6 @@ export default function QuestionarioPage() {
       setSelectedOptions([]);
       setTextInput('');
       setNumberInput('');
-
-      if (concluded) {
-        router.push('/feedback');
-      }
     } catch (err) {
       console.error('Erro ao avançar no questionário:', err);
       setApiError('Não foi possível avançar no questionário. Tente novamente.');
@@ -301,6 +302,69 @@ export default function QuestionarioPage() {
     } catch (err) {
       console.error('Erro ao salvar para continuar depois:', err);
       setApiError('Não foi possível salvar. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleVoltarPergunta = async () => {
+    if (!conversation) return;
+
+    const historico = estadoAtual.questionario_historico || [];
+    const passoAnterior = historico[historico.length - 1];
+    if (passoAnterior) {
+      const nextState: EstadoAtual = {
+        ...passoAnterior.estado,
+        questionario_historico: historico.slice(0, -1),
+      };
+      delete nextState.salvo_para_depois;
+
+      setSaving(true);
+      setApiError(null);
+      try {
+        await saveProgress(nextState);
+        setEstadoAtual(nextState);
+        setConversation(passoAnterior.conversation);
+        const resposta = passoAnterior.resposta;
+        setSelectedOptions(Array.isArray(resposta) ? resposta : typeof resposta === 'string' ? [resposta] : []);
+        setTextInput(passoAnterior.conversation.tipo_input === 'texto' && typeof resposta === 'string' ? resposta : '');
+        setNumberInput(passoAnterior.conversation.tipo_input === 'numero' && resposta !== undefined ? String(resposta) : '');
+      } catch (err) {
+        console.error('Erro ao voltar no questionário:', err);
+        setApiError('Não foi possível voltar à pergunta anterior. Tente novamente.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (conversation.etapa !== 'diagnostico_inicial') return;
+    const respostas = estadoAtual.diagnostico_inicial?.respostas || {};
+    const quantidadeRespondida = Object.keys(respostas).length;
+    if (quantidadeRespondida === 0) return;
+
+    const perguntaAnteriorId = `q${quantidadeRespondida}`;
+    const respostaAnterior = respostas[perguntaAnteriorId];
+    const nextState: EstadoAtual = { ...estadoAtual };
+    nextState.diagnostico_inicial = {
+      ...estadoAtual.diagnostico_inicial,
+      respostas: { ...respostas },
+    };
+    delete nextState.diagnostico_inicial.respostas?.[perguntaAnteriorId];
+
+    setSaving(true);
+    setApiError(null);
+    try {
+      const nextConversation = await fetchConversation(nextState);
+      await saveProgress(nextState);
+      setEstadoAtual(nextState);
+      setConversation(nextConversation);
+      setSelectedOptions(Array.isArray(respostaAnterior) ? respostaAnterior : respostaAnterior ? [respostaAnterior] : []);
+      setTextInput('');
+      setNumberInput('');
+    } catch (err) {
+      console.error('Erro ao voltar no questionário:', err);
+      setApiError('Não foi possível voltar à pergunta anterior. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -505,7 +569,7 @@ export default function QuestionarioPage() {
 
         <button
           onClick={async () => {
-            if (conversation.etapa === 'feedback_pendente') {
+            if (conversation.etapa === 'feedback_pendente' || conversation.etapa === 'finalizado') {
               router.push('/feedback');
               return;
             }
@@ -529,12 +593,35 @@ export default function QuestionarioPage() {
         >
           {saving
             ? 'Salvando...'
-            : conversation.etapa === 'feedback_pendente'
+            : conversation.etapa === 'feedback_pendente' || conversation.etapa === 'finalizado'
               ? 'Ver feedback'
-              : conversation.etapa === 'finalizado'
-                ? 'Finalizar'
-                : 'Próxima'}
+              : 'Próxima'}
         </button>
+
+        {(Boolean(estadoAtual.questionario_historico?.length)
+          || (conversation.etapa === 'diagnostico_inicial'
+            && Object.keys(estadoAtual.diagnostico_inicial?.respostas || {}).length > 0)) && (
+            <button
+              type="button"
+              onClick={handleVoltarPergunta}
+              disabled={saving}
+              style={{
+                width: '100%',
+                height: 44,
+                marginTop: 12,
+                borderRadius: 12,
+                border: '1px solid rgba(255,255,255,0.35)',
+                background: 'transparent',
+                color: 'white',
+                fontSize: 15,
+                fontWeight: 600,
+                fontFamily: 'Poppins',
+                cursor: saving ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Voltar à pergunta anterior
+            </button>
+          )}
       </div>
 
       <button

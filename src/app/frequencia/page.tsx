@@ -16,6 +16,9 @@ import alvoIcon from '../../../assets/icons/seta-de-alvo.svg';
 import tomateIcon from '../../../assets/icons/tomate.svg';
 import verificarIcon from '../../../assets/icons/verificar.svg';
 import cruzIcon from '../../../assets/icons/cruz.svg';
+import { calcularPerfil } from '@/services/algoritmos/calcularPerfil';
+import { DIAGNOSTICO_PERGUNTAS, calcularPontuacao } from '@/services/caipo/diagnosticoInicial';
+import type { Resposta } from '@/types/questionario';
 
 interface OfensivaData {
   streak_atual: number;
@@ -32,7 +35,17 @@ interface FrequenciaData {
   difference_minutes: number;
 }
 
-type PainelFrequencia = 'sequencia' | 'estatisticas' | null;
+type PainelFrequencia = 'sequencia' | 'estatisticas' | 'feedback' | null;
+
+type QuestionarioProgresso = {
+  concluido: boolean;
+  pontuacao_atual: number;
+  respostas_json: {
+    diagnostico_inicial?: {
+      respostas?: Record<string, string | string[]>;
+    };
+  } | null;
+};
 
 type MensagemChat = { id: string; autor: 'caipo' | 'usuario'; texto: string };
 
@@ -112,6 +125,9 @@ export default function FrequenciaPage() {
   const [frequenciaAtiva, setFrequenciaAtiva] = useState<boolean | null>(null);
   const [frequenciaData, setFrequenciaData] = useState<FrequenciaData | null>(null);
   const [painelAberto, setPainelAberto] = useState<PainelFrequencia>(null);
+  const [perfilFeedback, setPerfilFeedback] = useState<ReturnType<typeof calcularPerfil> | null>(null);
+  const [feedbackCarregando, setFeedbackCarregando] = useState(false);
+  const [feedbackErro, setFeedbackErro] = useState<string | null>(null);
 
   const [chatAberto, setChatAberto] = useState(false);
   const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
@@ -222,10 +238,49 @@ export default function FrequenciaPage() {
     }, 450);
   };
 
+  const abrirFeedback = async () => {
+    setPainelAberto('feedback');
+    setFeedbackCarregando(true);
+    setFeedbackErro(null);
+    try {
+      const response = await fetch('/api/questionario/progresso');
+      if (!response.ok) throw new Error('Não foi possível carregar seu feedback.');
+      const data = await response.json() as { progresso: QuestionarioProgresso | null };
+      const progresso = data.progresso;
+      const respostas = progresso?.respostas_json?.diagnostico_inicial?.respostas;
+      if (!progresso?.concluido || !respostas) {
+        setPerfilFeedback(null);
+        setFeedbackErro('O feedback ficará disponível depois que você concluir o questionário inicial.');
+        return;
+      }
+
+      const respostasComPontuacao: Record<string, Resposta> = {};
+      for (const pergunta of DIAGNOSTICO_PERGUNTAS) {
+        const resposta = respostas[pergunta.id];
+        const pontuacao = Array.isArray(resposta)
+          ? Math.max(0, ...resposta.map((opcao) => pergunta.pontos[opcao] ?? 0))
+          : pergunta.pontos[resposta ?? ''] ?? 0;
+        respostasComPontuacao[pergunta.id] = {
+          pergunta_id: pergunta.id,
+          pontuacao,
+        };
+      }
+
+      const pontuacaoTotal = progresso.pontuacao_atual ?? calcularPontuacao(respostas);
+      setPerfilFeedback(calcularPerfil(pontuacaoTotal, respostasComPontuacao, []));
+    } catch (error) {
+      console.error('Erro ao carregar feedback do questionário:', error);
+      setPerfilFeedback(null);
+      setFeedbackErro('Não foi possível carregar seu feedback. Tente novamente.');
+    } finally {
+      setFeedbackCarregando(false);
+    }
+  };
+
   const botoes = [
     { id: 'sequencia', texto: 'Ver minha sequência de estudos', acao: () => setPainelAberto('sequencia') },
     { id: 'estatisticas', texto: 'Minhas estatísticas da semana', acao: () => setPainelAberto('estatisticas') },
-    { id: 'conversar', texto: 'Conversar com o Caipo', acao: abrirChat },
+    { id: 'feedback', texto: 'Ver meu feedback', acao: abrirFeedback },
   ];
 
   const cardStyle: CSSProperties = {
@@ -426,6 +481,10 @@ export default function FrequenciaPage() {
                 <Image src={arrowIcon} alt="Abrir" width={29} height={29} style={{ filter: FILTRO_AZUL_ESCURO }} />
               </button>
             ))}
+            <button className="frequencia-action-button" type="button" onClick={abrirChat} style={botaoEstilo}>
+              <span style={{ color: '#091541', fontSize: 20, fontWeight: 600, fontFamily: 'Poppins' }}>Conversar com o Caipo</span>
+              <Image src={arrowIcon} alt="Abrir" width={29} height={29} style={{ filter: FILTRO_AZUL_ESCURO }} />
+            </button>
           </div>
         </div>
 
@@ -480,11 +539,17 @@ export default function FrequenciaPage() {
         </div>
       </div>
 
-      {painelAberto && frequenciaData && (
+      {painelAberto && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={painelAberto === 'sequencia' ? 'Minha sequência de estudos' : 'Minhas estatísticas da semana'}
+          aria-label={
+            painelAberto === 'sequencia'
+              ? 'Minha sequência de estudos'
+              : painelAberto === 'estatisticas'
+                ? 'Minhas estatísticas da semana'
+                : 'Meu feedback do questionário'
+          }
           onClick={() => setPainelAberto(null)}
           style={{
             position: 'fixed',
@@ -515,8 +580,18 @@ export default function FrequenciaPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
               <h2 style={{ margin: 0, fontSize: isCompact ? 22 : 30, fontWeight: 600 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Image src={painelAberto === 'sequencia' ? chamaIcon : livrosIcon} alt="" width={30} height={30} style={{ filter: FILTRO_BRANCO }} />
-                  {painelAberto === 'sequencia' ? 'Minha sequência de estudos' : 'Minhas estatísticas da semana'}
+                  <Image
+                    src={painelAberto === 'sequencia' ? chamaIcon : painelAberto === 'estatisticas' ? livrosIcon : alvoIcon}
+                    alt=""
+                    width={30}
+                    height={30}
+                    style={{ filter: FILTRO_BRANCO }}
+                  />
+                  {painelAberto === 'sequencia'
+                    ? 'Minha sequência de estudos'
+                    : painelAberto === 'estatisticas'
+                      ? 'Minhas estatísticas da semana'
+                      : 'Meu feedback do questionário'}
                 </span>
               </h2>
               <button
@@ -529,7 +604,55 @@ export default function FrequenciaPage() {
               </button>
             </div>
 
-            {!frequenciaData.has_history ? (
+            {painelAberto === 'feedback' ? (
+              feedbackCarregando ? (
+                <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 20, lineHeight: '26px', fontWeight: 600 }}>
+                  Carregando seu feedback...
+                </div>
+              ) : feedbackErro ? (
+                <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 20, lineHeight: '26px', fontWeight: 600 }}>
+                  <span style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <Image src={caipoBoneco} alt="Caipo" width={30} height={30} style={{ objectFit: 'contain', flexShrink: 0 }} />
+                    {feedbackErro}
+                  </span>
+                </div>
+              ) : perfilFeedback ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{
+                    background: 'rgba(255,255,255,0.12)',
+                    border: '1px solid rgba(255,222,104,0.6)',
+                    borderRadius: 16,
+                    padding: 18,
+                  }}>
+                    <div style={{ color: '#FFDE68', fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Seu perfil de estudante
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 700, marginTop: 6 }}>{perfilFeedback.descricao}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: 600, marginTop: 8 }}>
+                      Pontuação: {perfilFeedback.pontuacao}
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 18 }}>
+                    <h3 style={{ color: '#FFDE68', fontSize: 18, fontWeight: 700, margin: '0 0 10px' }}>Seus pontos fortes</h3>
+                    {perfilFeedback.pontos_fortes.map((ponto, index) => (
+                      <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 8, lineHeight: '22px', fontWeight: 600 }}>
+                        <span style={{ color: '#FFDE68' }}>•</span>
+                        <span>{ponto}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 18 }}>
+                    <h3 style={{ color: '#F8FF87', fontSize: 18, fontWeight: 700, margin: '0 0 10px' }}>Hábitos a desenvolver</h3>
+                    {perfilFeedback.habitos_desenvolver.map((habito, index) => (
+                      <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 8, lineHeight: '22px', fontWeight: 600 }}>
+                        <span style={{ color: '#F8FF87' }}>•</span>
+                        <span>{habito}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null
+            ) : !frequenciaData || !frequenciaData.has_history ? (
               <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: 20, lineHeight: '26px', fontWeight: 600 }}>
                 <span style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <Image src={caipoBoneco} alt="Caipo" width={30} height={30} style={{ objectFit: 'contain', flexShrink: 0 }} />

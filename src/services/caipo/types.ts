@@ -11,6 +11,12 @@ export interface ConversationResponse {
   proxima_etapa: string;
 }
 
+export interface QuestionarioHistoricoItem {
+  estado: Omit<EstadoAtual, 'questionario_historico'>;
+  conversation: ConversationResponse;
+  resposta?: string | string[] | number;
+}
+
 export interface DadosIniciaisState {
   serie?: string;
   desempenho_escolar?: string;
@@ -20,7 +26,7 @@ export interface DadosIniciaisState {
 }
 
 export interface DiagnosticoInicialState {
-  respostas?: Record<string, string>;
+  respostas?: Record<string, string | string[]>;
   pontuacao_total?: number;
   classificacao?: string;
 }
@@ -51,4 +57,5 @@ export interface EstadoAtual {
   rotina_diaria?: RotinaDiariaState;
   micro_feedback_diario?: Record<string, unknown>;
   macro_feedback_semanal?: Record<string, unknown>;
+  questionario_historico?: QuestionarioHistoricoItem[];
 }
