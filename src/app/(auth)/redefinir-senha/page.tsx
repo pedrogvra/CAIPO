@@ -33,11 +33,18 @@ export default function RedefinirSenhaPage() {
     let active = true;
     const isRecoveryLink = hash.get('type') === 'recovery';
     const hasRecoveryMarker = sessionStorage.getItem('caipo_password_recovery') === '1';
+    const accessToken = hash.get('access_token');
+    const refreshToken = hash.get('refresh_token');
     const markAsReady = () => {
       if (!active) return;
       sessionStorage.removeItem('caipo_password_recovery');
       setEstado('pronto');
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    };
+    const markAsInvalid = () => {
+      if (!active) return;
+      setErro('Este link expirou ou não é mais válido. Solicite um novo e-mail de recuperação.');
+      setEstado('invalido');
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -46,10 +53,30 @@ export default function RedefinirSenhaPage() {
       }
     });
 
-    if (isRecoveryLink || hasRecoveryMarker) {
+    if (isRecoveryLink && accessToken && refreshToken) {
+      void supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ data, error: sessionError }) => {
+        if (sessionError) {
+          console.error('Não foi possível validar a sessão de recuperação:', sessionError.message);
+          markAsInvalid();
+          return;
+        }
+        if (data.session) markAsReady();
+        else markAsInvalid();
+      }).catch((sessionError: unknown) => {
+        console.error('Falha ao validar o token de recuperação:', sessionError);
+        markAsInvalid();
+      });
+    } else if (isRecoveryLink || hasRecoveryMarker) {
       void supabase.auth.getSession().then(({ data, error: sessionError }) => {
         if (sessionError) console.error('Não foi possível validar a sessão de recuperação:', sessionError.message);
         if (data.session) markAsReady();
+        else if (isRecoveryLink) markAsInvalid();
+      }).catch((sessionError: unknown) => {
+        console.error('Falha ao recuperar a sessão de recuperação:', sessionError);
+        if (isRecoveryLink) markAsInvalid();
       });
     }
 
