@@ -5,7 +5,7 @@ export interface SlotCronograma {
   dia_semana: number;
   horario_inicio: string;
   horario_fim: string;
-  tipo: 'estudo' | 'revisao' | 'pausa';
+  tipo: 'estudo' | 'revisao' | 'pausa' | 'atividade_fixa';
 }
 
 interface ConfigCronograma {
@@ -799,7 +799,6 @@ export function gerarCronograma(config: ConfigCronograma): SlotCronograma[] {
 
   return sessions;
 }
-
 
 
 

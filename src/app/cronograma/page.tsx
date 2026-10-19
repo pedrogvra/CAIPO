@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import HeaderUsuario from '@/components/layout/HeaderUsuario';
 import CronogramaWizard from '@/components/cronograma/CronogramaWizard';
 import Image from 'next/image';
-import type { CronogramaCompleto } from '@/types/cronograma';
+import type { CronogramaCompleto, Materia } from '@/types/cronograma';
 import plusIcon from '../../../assets/icons/mais.svg';
 
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -16,7 +16,7 @@ export default function CronogramaPage() {
   const router = useRouter();
   const { usuario, loading, questionarioStatus, refreshQuestionario } = useAuth();
   const [cronograma, setCronograma] = useState<CronogramaCompleto | null>(null);
-  const [materias, setMaterias] = useState<Array<{ id: string; nome: string; cor?: string }>>([]);
+  const [materias, setMaterias] = useState<Materia[]>([]);
   const [mostrando, setMostrando] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -142,7 +142,7 @@ export default function CronogramaPage() {
                           }}>Sem matéria</div>
                         ) : materiasVisiveis.map((s, j) => (
                           <div key={`${s.materia}-${s.horario_inicio}-${s.horario_fim}-${j}`} style={{
-                            background: s.tipo === 'revisao' ? '#0C3067' : (materiasMap[s.materia]?.cor || '#1E55A8'),
+                            background: s.tipo === 'atividade_fixa' ? '#5395CF' : s.tipo === 'revisao' ? '#0C3067' : (materiasMap[s.materia]?.cor || '#1E55A8'),
                             color: 'white',
                             borderRadius: 6,
                             padding: '4px 6px',
@@ -152,6 +152,7 @@ export default function CronogramaPage() {
                             <div style={{ fontWeight: 700 }}>{s.materia}</div>
                             <div style={{ opacity: 0.8 }}>{s.horario_inicio}–{s.horario_fim}</div>
                             {s.tipo === 'revisao' && <div style={{ fontSize: 9, opacity: 0.7 }}>revisão</div>}
+                            {s.tipo === 'atividade_fixa' && <div style={{ fontSize: 9, opacity: 0.85 }}>atividade fixa</div>}
                           </div>
                         ))}
                       </div>
@@ -172,19 +173,23 @@ export default function CronogramaPage() {
             )}
           </div>
 
-          {/* Botão + */}
+          {/* Ação do cronograma */}
           <button
             onClick={() => setMostrando(true)}
+            aria-label={cronograma ? 'Editar cronograma' : 'Criar cronograma'}
+            disabled={loadingData}
             style={{
               alignSelf: 'flex-end',
               marginTop: 16,
-              width: 100,
-              height: 100,
-              borderRadius: '50%',
+              minWidth: cronograma ? 210 : 100,
+              height: cronograma ? 58 : 100,
+              padding: cronograma ? '0 24px' : 0,
+              borderRadius: cronograma ? 30 : '50%',
               background: '#FFDE68',
               boxShadow: '6px 6px 10.6px rgba(0, 0, 0, 0.25)',
               border: 'none',
-              cursor: 'pointer',
+              cursor: loadingData ? 'wait' : 'pointer',
+              opacity: loadingData ? 0.7 : 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -193,7 +198,11 @@ export default function CronogramaPage() {
               zIndex: 20,
             }}
           >
-            <Image src={plusIcon} alt="Adicionar cronograma" width={50} height={50} style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(34%) saturate(1367%) hue-rotate(183deg) brightness(96%) contrast(99%)' }} />
+            {cronograma ? (
+              <span style={{ color: '#091541', fontSize: 17, fontWeight: 700, fontFamily: 'Poppins' }}>Editar cronograma</span>
+            ) : (
+              <Image src={plusIcon} alt="" width={50} height={50} style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(34%) saturate(1367%) hue-rotate(183deg) brightness(96%) contrast(99%)' }} />
+            )}
           </button>
         </div>
 
@@ -201,6 +210,8 @@ export default function CronogramaPage() {
         {mostrando && (
           <CronogramaWizard
             onClose={() => setMostrando(false)}
+            cronogramaInicial={cronograma}
+            materiasDisponiveis={materias}
             onSuccess={() => {
               setMostrando(false);
               loadCronograma();

@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { gerarCronograma } from '@/services/algoritmos/gerarCronograma';
-import type { Materia } from '@/types/cronograma';
+import type { CronogramaCompleto, Materia } from '@/types/cronograma';
 
 interface Props {
   onClose: () => void;
   onSuccess: () => void;
+  cronogramaInicial?: CronogramaCompleto | null;
+  materiasDisponiveis?: Materia[];
 }
 
 interface AtividadeFixa {
@@ -29,18 +31,38 @@ const ATIVIDADES_SUGERIDAS: Record<string, string[]> = {
   'Outro': [],
 };
 
-export default function CronogramaWizard({ onClose, onSuccess }: Props) {
+export default function CronogramaWizard({
+  onClose,
+  onSuccess,
+  cronogramaInicial = null,
+  materiasDisponiveis = [],
+}: Props) {
   const [etapa, setEtapa] = useState(1);
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState('');
 
   // Etapa 1 - Disponibilidade
-  const [horarioAcordar, setHorarioAcordar] = useState('07:00');
-  const [horarioDormir, setHorarioDormir] = useState('23:00');
-  const [diasDisponiveis, setDiasDisponiveis] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [horarioAcordar, setHorarioAcordar] = useState(cronogramaInicial?.horario_acordar || '07:00');
+  const [horarioDormir, setHorarioDormir] = useState(cronogramaInicial?.horario_dormir || '23:00');
+  const [diasDisponiveis, setDiasDisponiveis] = useState<number[]>(cronogramaInicial?.dias_disponiveis || [1, 2, 3, 4, 5]);
 
   // Etapa 2 - Atividades Fixas
-  const [atividadesFixas, setAtividadesFixas] = useState<AtividadeFixa[]>([]);
+  const [atividadesFixas, setAtividadesFixas] = useState<AtividadeFixa[]>(() => {
+    const activities = new Map<string, AtividadeFixa>();
+    for (const session of cronogramaInicial?.sessoes || []) {
+      if (session.tipo !== 'atividade_fixa') continue;
+      const key = `${session.materia}|${session.horario_inicio}|${session.horario_fim}`;
+      const activity = activities.get(key) || {
+        nome: session.materia,
+        dias_semana: [],
+        horario_inicio: session.horario_inicio,
+        horario_fim: session.horario_fim,
+      };
+      if (!activity.dias_semana.includes(session.dia_semana)) activity.dias_semana.push(session.dia_semana);
+      activities.set(key, activity);
+    }
+    return Array.from(activities.values());
+  });
   const [novaAtividade, setNovaAtividade] = useState({ nome: '', dias_semana: [] as number[], horario_inicio: '08:00', horario_fim: '09:00' });
   const [atividadeEditando, setAtividadeEditando] = useState<number | null>(null);
   const [categoriaAberta, setCategoriaAberta] = useState(false);
@@ -48,17 +70,53 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
   const [tentouAdicionarSemDia, setTentouAdicionarSemDia] = useState(false);
 
   // Etapa 3 - Matérias
-  const [materias, setMaterias] = useState<Materia[]>([]);
+  const [materias, setMaterias] = useState<Materia[]>(() => {
+    const subjects = new Set(
+      (cronogramaInicial?.sessoes || [])
+        .filter(session => session.tipo !== 'revisao' && session.tipo !== 'atividade_fixa')
+        .map(session => session.materia),
+    );
+    return Array.from(subjects, nome => (
+      materiasDisponiveis.find(materia => materia.nome === nome) || {
+        id: `cronograma-${nome}`,
+        usuario_id: '',
+        nome,
+        peso_prioridade: 10,
+        cor: CORES_MATERIAS[0],
+      }
+    ));
+  });
   const [novaMateria, setNovaMateria] = useState({ nome: '', peso_prioridade: 10, cor: CORES_MATERIAS[0] });
 
   // Etapa 4 - Preferências
-  const [periodoPreferido, setPeriodoPreferido] = useState('manha');
-  const [tempoMaxSemPausa, setTempoMaxSemPausa] = useState(50);
-  const [variasMateriasPorDia, setVariasMateriasPorDia] = useState(true);
-  const [diaRevisaoSelecionado, setDiaRevisaoSelecionado] = useState<number | null>(null);
+  const [periodoPreferido, setPeriodoPreferido] = useState(cronogramaInicial?.periodo_preferido || 'manha');
+  const [tempoMaxSemPausa, setTempoMaxSemPausa] = useState(cronogramaInicial?.tempo_max_sem_pausa || 50);
+  const [variasMateriasPorDia, setVariasMateriasPorDia] = useState(cronogramaInicial?.varias_materias_por_dia ?? true);
+  const [diaRevisaoSelecionado, setDiaRevisaoSelecionado] = useState<number | null>(() => {
+    const reviewDays = new Set(
+      (cronogramaInicial?.sessoes || [])
+        .filter(session => session.tipo === 'revisao')
+        .map(session => session.dia_semana),
+    );
+    return reviewDays.size === 1 ? Array.from(reviewDays)[0] : null;
+  });
 
-  const toggleDia = (dia: number, dias: number[], setDias: (d: number[]) => void) => {
-    setDias(dias.includes(dia) ? dias.filter(d => d !== dia) : [...dias, dia]);
+  const alterarDiasDisponiveis = (dia: number) => {
+    const novosDiasDisponiveis = diasDisponiveis.includes(dia)
+      ? diasDisponiveis.filter(d => d !== dia)
+      : [...diasDisponiveis, dia];
+    setDiasDisponiveis(novosDiasDisponiveis);
+    setAtividadesFixas(prev => prev.map(atividade => ({
+      ...atividade,
+      dias_semana: atividade.dias_semana.filter(d => novosDiasDisponiveis.includes(d)),
+    })));
+    setNovaAtividade(prev => ({
+      ...prev,
+      dias_semana: prev.dias_semana.filter(d => novosDiasDisponiveis.includes(d)),
+    }));
+    if (diaRevisaoSelecionado !== null && !novosDiasDisponiveis.includes(diaRevisaoSelecionado)) {
+      setDiaRevisaoSelecionado(null);
+    }
   };
 
   const adicionarAtividade = () => {
@@ -118,6 +176,10 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
   const handleFinalizar = async () => {
     if (materias.length === 0) { setErro('Adicione pelo menos uma matéria.'); return; }
     if (diasDisponiveis.length === 0) { setErro('Selecione pelo menos um dia disponível.'); return; }
+    if (atividadesFixas.some(atividade => atividade.dias_semana.length === 0)) {
+      setErro('Selecione pelo menos um dia de estudo para cada atividade fixa.');
+      return;
+    }
     if (diaRevisaoSelecionado !== null && !diasDisponiveis.includes(diaRevisaoSelecionado)) {
       setErro('O dia de revisão precisa estar marcado como disponível para estudo.');
       return;
@@ -148,7 +210,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
         }
       }
 
-      const sessoes = gerarCronograma({
+      const sessoesEstudo = gerarCronograma({
         horario_acordar: horarioAcordar,
         horario_dormir: horarioDormir,
         dias_disponiveis: diasDisponiveis,
@@ -162,6 +224,16 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
         variar_materias_por_dia: true,
         estrategia_poucas: variasMateriasPorDia ? undefined : 'dividir_por_2',
       });
+      const sessoes = [
+        ...sessoesEstudo,
+        ...atividadesFixas.flatMap(atividade => atividade.dias_semana.map(dia => ({
+          materia: atividade.nome,
+          dia_semana: dia,
+          horario_inicio: atividade.horario_inicio,
+          horario_fim: atividade.horario_fim,
+          tipo: 'atividade_fixa' as const,
+        }))),
+      ];
 
       const res = await fetch('/api/cronograma', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -238,7 +310,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 className="cronograma-wizard-title" style={{ color: '#FFDE68', fontSize: 26, fontWeight: 600, margin: 0 }}>
-            Criar Cronograma – Etapa {etapa}/4
+            {cronogramaInicial ? 'Editar cronograma' : 'Criar cronograma'} – Etapa {etapa}/4
           </h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: 28, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
@@ -273,7 +345,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
               <label style={labelStyle}>Dias disponíveis para estudo</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {DIAS_SEMANA.map((d, i) => (
-                  <button key={i} onClick={() => toggleDia(i, diasDisponiveis, setDiasDisponiveis)}
+                  <button key={i} onClick={() => alterarDiasDisponiveis(i)}
                     style={{
                       padding: '8px 14px', borderRadius: 8, border: '2px solid',
                       borderColor: diasDisponiveis.includes(i) ? '#FFDE68' : 'rgba(255,255,255,0.3)',
@@ -296,6 +368,11 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
             <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 600, margin: 0 }}>
               Informe aulas, esportes ou compromissos que já têm horário definido. Só é possível marcar dias disponíveis para estudo.
             </p>
+            {cronogramaInicial && !cronogramaInicial.sessoes.some(session => session.tipo === 'atividade_fixa') && (
+              <p style={{ color: '#FFDE68', fontSize: 13, fontWeight: 600, margin: 0 }}>
+                As atividades fixas deste cronograma não foram salvas anteriormente. Adicione-as novamente para incluí-las na edição.
+              </p>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ position: 'relative' }}>
@@ -427,6 +504,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
               )}
               <button
                 onClick={adicionarAtividade}
+                type="button"
                 disabled={!novaAtividade.nome.trim()}
                 style={{
                   padding: '10px', borderRadius: 8, border: '2px dashed rgba(255,255,255,0.4)',
@@ -464,7 +542,7 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
                     <div style={{ color: 'white', fontSize: 14, fontWeight: 600, minWidth: 0 }}>
                       <div>{a.nome} – {a.horario_inicio} às {a.horario_fim}</div>
                       <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 }}>
-                        {a.dias_semana.length > 0 ? a.dias_semana.map(dia => DIAS_SEMANA[dia]).join(', ') : 'Sem dias selecionados'}
+                        {a.dias_semana.length > 0 ? a.dias_semana.map(dia => DIAS_SEMANA[dia]).join(', ') : 'Selecione novamente os dias disponíveis para estudo'}
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
