@@ -177,15 +177,19 @@ export default function CronogramaPage() {
           </div>
 
           {/* Menu de ações do cronograma */}
-          <div style={{ position: 'absolute', right: 24, bottom: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', zIndex: 30 }}>
+          <div style={{ position: 'absolute', right: 24, bottom: 20, width: 76, height: 76, zIndex: 30 }}>
             <button
               type="button"
-              onClick={() => setMenuAcoesAberto(aberto => !aberto)}
-              aria-label={menuAcoesAberto ? 'Fechar ações do cronograma' : 'Abrir ações do cronograma'}
+              onClick={() => setMenuAcoesAberto(true)}
+              aria-label="Abrir ações do cronograma"
+              aria-hidden={menuAcoesAberto}
               aria-expanded={menuAcoesAberto}
               aria-controls="cronograma-menu-acoes"
               disabled={loadingData}
+              tabIndex={menuAcoesAberto ? -1 : 0}
               style={{
+                position: 'absolute',
+                inset: 0,
                 width: 76,
                 height: 76,
                 borderRadius: '50%',
@@ -193,10 +197,13 @@ export default function CronogramaPage() {
                 boxShadow: '6px 6px 10.6px rgba(0, 0, 0, 0.25)',
                 border: 'none',
                 cursor: loadingData ? 'wait' : 'pointer',
-                opacity: loadingData ? 0.7 : 1,
+                opacity: loadingData ? 0.7 : menuAcoesAberto ? 0 : 1,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                transition: 'opacity 180ms ease, transform 240ms ease',
+                transform: menuAcoesAberto ? 'scale(0.72)' : 'scale(1)',
+                pointerEvents: menuAcoesAberto ? 'none' : 'auto',
               }}
             >
               <Image
@@ -207,29 +214,37 @@ export default function CronogramaPage() {
                 style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(34%) saturate(1367%) hue-rotate(183deg) brightness(96%) contrast(99%)' }}
               />
             </button>
-            {menuAcoesAberto && (
-              <div
-                id="cronograma-menu-acoes"
-                role="group"
-                aria-label="Ações do cronograma"
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  bottom: 'calc(100% + 12px)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                  width: 'min(260px, calc(100vw - 48px))',
-                  padding: '42px 12px 12px',
-                  borderRadius: 16,
-                  background: 'linear-gradient(156deg, #2864B8 0%, #091541 100%)',
-                  border: '1px solid rgba(255,222,104,0.55)',
-                  boxShadow: '0 10px 28px rgba(0,0,0,0.3)',
-                }}
-              >
+            <div
+              id="cronograma-menu-acoes"
+              role="group"
+              aria-label="Ações do cronograma"
+              aria-hidden={!menuAcoesAberto}
+              style={{
+                position: 'absolute',
+                right: 0,
+                bottom: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                width: menuAcoesAberto ? 'min(260px, calc(100vw - 48px))' : 76,
+                height: menuAcoesAberto ? (cronograma ? 164 : 114) : 76,
+                padding: menuAcoesAberto ? '42px 12px 12px' : 0,
+                overflow: 'hidden',
+                borderRadius: menuAcoesAberto ? 16 : '50%',
+                background: menuAcoesAberto ? 'linear-gradient(156deg, #2864B8 0%, #091541 100%)' : 'transparent',
+                border: menuAcoesAberto ? '1px solid rgba(255,222,104,0.55)' : '1px solid transparent',
+                boxShadow: menuAcoesAberto ? '0 10px 28px rgba(0,0,0,0.3)' : 'none',
+                opacity: menuAcoesAberto ? 1 : 0,
+                transform: menuAcoesAberto ? 'scale(1)' : 'scale(0.82)',
+                transformOrigin: 'bottom right',
+                pointerEvents: menuAcoesAberto ? 'auto' : 'none',
+                transition: 'width 240ms ease, height 240ms ease, padding 240ms ease, border-radius 240ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, opacity 160ms ease, transform 240ms ease',
+              }}
+            >
                 <button
                   type="button"
                   onClick={() => setMenuAcoesAberto(false)}
+                  disabled={!menuAcoesAberto}
                   aria-label="Fechar ações do cronograma"
                   style={{
                     position: 'absolute',
@@ -250,6 +265,7 @@ export default function CronogramaPage() {
                 </button>
                 <button
                   type="button"
+                  disabled={!menuAcoesAberto}
                   onClick={() => {
                     setModoWizard(cronograma ? 'editar' : 'novo');
                     setMenuAcoesAberto(false);
@@ -274,6 +290,7 @@ export default function CronogramaPage() {
                 {cronograma && (
                   <button
                     type="button"
+                    disabled={!menuAcoesAberto}
                     onClick={() => {
                       setMenuAcoesAberto(false);
                       setConfirmandoNovo(true);
@@ -295,8 +312,7 @@ export default function CronogramaPage() {
                     Criar outro cronograma
                   </button>
                 )}
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
