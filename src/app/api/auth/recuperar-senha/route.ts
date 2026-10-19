@@ -1,23 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db';
-import { usuarios } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
-    if (!email) {
-      return NextResponse.json({ error: 'Email é obrigatório.' }, { status: 400 });
+    const body = await req.json() as { email?: unknown };
+    if (typeof body.email !== 'string' || !body.email.trim()) {
+      return NextResponse.json({ error: 'Informe um e-mail válido.' }, { status: 400 });
     }
 
-    // Check if user exists (don't reveal if not found for security)
-    await db.select().from(usuarios).where(eq(usuarios.email, email.toLowerCase())).limit(1);
+    const email = body.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: 'Informe um e-mail válido.' }, { status: 400 });
+    }
 
-    // In production, you'd send an email here
-    // For demo purposes, we just return success
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL)?.trim();
+    const supabaseKey = (
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      || process.env.SUPABASE_ANON_KEY
+      || process.env.SUPABASE_SERVICE_ROLE_KEY
+    )?.trim();
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Password recovery failed: Supabase URL or public key is not configured.');
+      return NextResponse.json({ error: 'O serviço de recuperação de senha não está configurado.' }, { status: 500 });
+    }
+
+    const redirectTo = new URL('/redefinir-senha', req.nextUrl.origin).toString();
+    const supabaseResponse = await fetch(
+      `${supabaseUrl.replace(/\/+$/, '')}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`,
+      {
+      method: 'POST',
+      headers: {
+        apikey: supabaseKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+      },
+    );
+
+    if (!supabaseResponse.ok) {
+      const responseBody = await supabaseResponse.json().catch(() => ({})) as {
+        msg?: string;
+        message?: string;
+        error_description?: string;
+      };
+      const detail = responseBody.msg || responseBody.message || responseBody.error_description;
+      console.error('Supabase password recovery failed:', supabaseResponse.status, detail || 'No error details returned.');
+      return NextResponse.json(
+        { error: 'Não foi possível enviar o e-mail de recuperação. Tente novamente mais tarde.' },
+        { status: supabaseResponse.status >= 400 && supabaseResponse.status < 500 ? supabaseResponse.status : 502 },
+      );
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('Recover password error:', err);
-    return NextResponse.json({ error: 'Erro interno.' }, { status: 500 });
+    console.error('Password recovery error:', err);
+    return NextResponse.json({ error: 'Não foi possível enviar o e-mail de recuperação.' }, { status: 500 });
   }
 }

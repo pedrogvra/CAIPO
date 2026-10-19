@@ -20,7 +20,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
 
-  const rotasSemSidebar = ['/login', '/cadastro', '/recuperar-senha', '/onboarding', '/questionario', '/feedback'];
+  const rotasSemSidebar = ['/login', '/cadastro', '/recuperar-senha', '/redefinir-senha', '/onboarding', '/questionario', '/feedback'];
   const shouldRenderSidebar = !rotasSemSidebar.includes(pathname);
 
   useEffect(() => {
