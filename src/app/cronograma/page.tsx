@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import HeaderUsuario from '@/components/layout/HeaderUsuario';
@@ -22,6 +22,8 @@ export default function CronogramaPage() {
   const [confirmandoNovo, setConfirmandoNovo] = useState(false);
   const [modoWizard, setModoWizard] = useState<'novo' | 'editar'>('novo');
   const [loadingData, setLoadingData] = useState(true);
+  const menuBotaoRef = useRef<HTMLButtonElement>(null);
+  const menuFecharRef = useRef<HTMLButtonElement>(null);
 
   const diasParaExibir = cronograma?.dias_disponiveis && cronograma.dias_disponiveis.length > 0
     ? [...new Set(cronograma.dias_disponiveis)].sort((a, b) => a - b)
@@ -30,6 +32,15 @@ export default function CronogramaPage() {
   useEffect(() => {
     if (!loading && !usuario) router.push('/login');
   }, [usuario, loading, router]);
+
+  useEffect(() => {
+    if (menuAcoesAberto) menuFecharRef.current?.focus();
+  }, [menuAcoesAberto]);
+
+  const fecharMenuAcoes = () => {
+    menuBotaoRef.current?.focus();
+    setMenuAcoesAberto(false);
+  };
 
   const loadCronograma = () => {
     if (!usuario) return;
@@ -180,13 +191,12 @@ export default function CronogramaPage() {
           <div style={{ position: 'absolute', right: 24, bottom: 20, width: 76, height: 76, zIndex: 30 }}>
             <button
               type="button"
+              ref={menuBotaoRef}
               onClick={() => setMenuAcoesAberto(true)}
               aria-label="Abrir ações do cronograma"
-              aria-hidden={menuAcoesAberto}
               aria-expanded={menuAcoesAberto}
               aria-controls="cronograma-menu-acoes"
               disabled={loadingData}
-              tabIndex={menuAcoesAberto ? -1 : 0}
               style={{
                 position: 'absolute',
                 inset: 0,
@@ -218,7 +228,7 @@ export default function CronogramaPage() {
               id="cronograma-menu-acoes"
               role="group"
               aria-label="Ações do cronograma"
-              aria-hidden={!menuAcoesAberto}
+              inert={!menuAcoesAberto}
               style={{
                 position: 'absolute',
                 right: 0,
@@ -243,7 +253,8 @@ export default function CronogramaPage() {
             >
                 <button
                   type="button"
-                  onClick={() => setMenuAcoesAberto(false)}
+                  ref={menuFecharRef}
+                  onClick={fecharMenuAcoes}
                   disabled={!menuAcoesAberto}
                   aria-label="Fechar ações do cronograma"
                   style={{
@@ -268,7 +279,7 @@ export default function CronogramaPage() {
                   disabled={!menuAcoesAberto}
                   onClick={() => {
                     setModoWizard(cronograma ? 'editar' : 'novo');
-                    setMenuAcoesAberto(false);
+                    fecharMenuAcoes();
                     setMostrando(true);
                   }}
                   style={{
@@ -292,7 +303,7 @@ export default function CronogramaPage() {
                     type="button"
                     disabled={!menuAcoesAberto}
                     onClick={() => {
-                      setMenuAcoesAberto(false);
+                      fecharMenuAcoes();
                       setConfirmandoNovo(true);
                     }}
                     style={{
