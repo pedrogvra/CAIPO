@@ -87,7 +87,7 @@ export default function CronogramaPage() {
         </div>
 
         {/* Card Principal Azul */}
-        <div className="cronograma-card flex-1 w-full overflow-hidden rounded-2xl bg-[#1A4B9A] p-6 flex flex-col shadow-[6px_6px_10.6px_rgba(0,0,0,0.25)]" style={{ padding: 'var(--page-padding)' }}>
+        <div className="cronograma-card flex-1 w-full overflow-hidden rounded-2xl bg-[#1A4B9A] p-6 flex flex-col shadow-[6px_6px_10.6px_rgba(0,0,0,0.25)]" style={{ padding: 'var(--page-padding)', position: 'relative' }}>
           {/* Título */}
           <div className="cronograma-title" style={{ color: '#FFDE68', fontSize: 36, fontWeight: 600, marginBottom: 16 }}>
             Seu último cronograma
@@ -177,7 +177,7 @@ export default function CronogramaPage() {
           </div>
 
           {/* Menu de ações do cronograma */}
-          <div style={{ alignSelf: 'flex-end', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, marginTop: 16, position: 'sticky', bottom: 20, zIndex: 20 }}>
+          <div style={{ position: 'absolute', right: 24, bottom: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', zIndex: 30 }}>
             <button
               type="button"
               onClick={() => setMenuAcoesAberto(aberto => !aberto)}
@@ -213,17 +213,41 @@ export default function CronogramaPage() {
                 role="group"
                 aria-label="Ações do cronograma"
                 style={{
+                  position: 'absolute',
+                  right: 0,
+                  bottom: 'calc(100% + 12px)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 8,
                   width: 'min(260px, calc(100vw - 48px))',
-                  padding: 12,
+                  padding: '42px 12px 12px',
                   borderRadius: 16,
                   background: 'linear-gradient(156deg, #2864B8 0%, #091541 100%)',
                   border: '1px solid rgba(255,222,104,0.55)',
                   boxShadow: '0 10px 28px rgba(0,0,0,0.3)',
                 }}
               >
+                <button
+                  type="button"
+                  onClick={() => setMenuAcoesAberto(false)}
+                  aria-label="Fechar ações do cronograma"
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 8,
+                    width: 30,
+                    height: 30,
+                    border: 0,
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.12)',
+                    color: 'white',
+                    fontSize: 22,
+                    lineHeight: 1,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ×
+                </button>
                 <button
                   type="button"
                   onClick={() => {
