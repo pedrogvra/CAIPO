@@ -133,7 +133,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isDatabaseConfigured || !db) {
-      return NextResponse.json({ cronograma: null, message: 'Banco não configurado' });
+      return NextResponse.json(
+        { error: 'Não foi possível salvar o cronograma porque o banco de dados não está configurado.' },
+        { status: 503 },
+      );
     }
 
     await deleteUserCronogramasLocal(payload.userId);

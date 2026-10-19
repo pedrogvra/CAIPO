@@ -177,10 +177,17 @@ export default function CronogramaWizard({ onClose, onSuccess }: Props) {
         }),
       });
 
-      if (!res.ok) throw new Error('Erro ao salvar cronograma');
+      const resposta = await res.json();
+      if (!res.ok) {
+        throw new Error(resposta.error || 'Não foi possível salvar o cronograma. Tente novamente.');
+      }
+      if (!resposta.cronograma) {
+        throw new Error(resposta.message || 'O cronograma não foi salvo. Verifique a conexão e tente novamente.');
+      }
       onSuccess();
     } catch (e) {
-      setErro('Erro ao criar cronograma. Tente novamente.');
+      console.error('Erro ao criar cronograma:', e);
+      setErro(e instanceof Error ? e.message : 'Erro ao criar cronograma. Tente novamente.');
     } finally {
       setSaving(false);
     }

@@ -303,3 +303,37 @@ test('each selected study day receives at least one subject', () => {
     assert.ok(byDay.get(dia)!.size > 0, `Expected day ${dia} to contain a subject`);
   }
 });
+
+test('consecutive fixed activities with no overlap are accepted', () => {
+  const sessions = gerarCronograma({
+    horario_acordar: '07:00',
+    horario_dormir: '23:00',
+    dias_disponiveis: [1],
+    materias: [materia('Matemática')],
+    atividades_fixas: [
+      { nome: 'Aula', dias_semana: [1], horario_inicio: '08:00', horario_fim: '09:00' },
+      { nome: 'Deslocamento', dias_semana: [1], horario_inicio: '09:00', horario_fim: '10:00' },
+    ],
+    tempo_max_sem_pausa: 50,
+    periodo_preferido: 'manha',
+    varias_materias_por_dia: true,
+  });
+
+  assert.ok(sessions.length > 0);
+});
+
+test('overlapping fixed activities report the conflicting activities', () => {
+  assert.throws(() => gerarCronograma({
+    horario_acordar: '07:00',
+    horario_dormir: '23:00',
+    dias_disponiveis: [1],
+    materias: [materia('Matemática')],
+    atividades_fixas: [
+      { nome: 'Aula', dias_semana: [1], horario_inicio: '08:00', horario_fim: '09:30' },
+      { nome: 'Deslocamento', dias_semana: [1], horario_inicio: '09:00', horario_fim: '10:00' },
+    ],
+    tempo_max_sem_pausa: 50,
+    periodo_preferido: 'manha',
+    varias_materias_por_dia: true,
+  }), /Conflito de horários entre atividades fixas no dia 2: "Aula" e "Deslocamento"/);
+});

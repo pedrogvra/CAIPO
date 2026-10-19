@@ -223,7 +223,7 @@ function validateFixedActivities(atividades: Array<{ nome: string; dias_semana: 
     for (let i = 1; i < intervals.length; i++) {
       const prev = intervals[i - 1];
       const current = intervals[i];
-      if (current.inicio <= prev.fim) {
+      if (current.inicio < prev.fim) {
         throw new Error(`Conflito de horários entre atividades fixas no dia ${dia + 1}: "${prev.nome}" e "${current.nome}".`);
       }
     }
@@ -799,7 +799,6 @@ export function gerarCronograma(config: ConfigCronograma): SlotCronograma[] {
 
   return sessions;
 }
-
 
 
 
