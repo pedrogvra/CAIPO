@@ -181,7 +181,7 @@ export default function RedefinirSenhaPage() {
         {estado === 'invalido' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div className="auth-form-error" role="alert">{erro}</div>
-            <Link href="/recuperar-senha" className="auth-form-button" style={{ display: 'block', textAlign: 'center' }}>
+            <Link href="/recuperar-senha" className="auth-form-button">
               Solicitar novo link
             </Link>
           </div>
@@ -192,7 +192,7 @@ export default function RedefinirSenhaPage() {
             <div role="status" style={{ color: 'white', textAlign: 'center', fontWeight: 600 }}>
               Sua senha foi redefinida com sucesso.
             </div>
-            <Link href="/login" className="auth-form-button" style={{ display: 'block', textAlign: 'center' }}>
+            <Link href="/login" className="auth-form-button">
               Ir para o login
             </Link>
           </div>
